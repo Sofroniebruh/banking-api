@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.security.Key;
+import java.time.Duration;
 import java.util.*;
 import java.util.function.Function;
 
@@ -41,7 +42,7 @@ public class JwtService {
         return claimsResolver.apply(claims);
     }
 
-    public String generateToken(UserDetails userDetails, Integer time) {
+    public String generateToken(UserDetails userDetails, Duration time) {
         return generateToken(new HashMap<>(), userDetails, time);
     }
 
@@ -62,14 +63,16 @@ public class JwtService {
     public String generateToken(
             Map<String, Object> claims,
             UserDetails userDetails,
-            Integer time
+            Duration time
     ) {
+        long expMilliSeconds = System.currentTimeMillis() + time.toMillis();
+
         return Jwts
                 .builder()
                 .setClaims(claims)
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + time))
+                .setExpiration(new Date(expMilliSeconds))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }

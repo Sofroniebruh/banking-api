@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.*;
 
 @Service
@@ -29,8 +30,8 @@ public class UserService {
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
     private final PasswordEncoder passwordEncoder;
     private final UserDetailsService userDetailsService;
-    private final int ACCESS_TOKEN_TTL;
-    private final int REFRESH_TOKEN_TTL;
+    private final Duration ACCESS_TOKEN_TTL;
+    private final Duration REFRESH_TOKEN_TTL;
     private final AuthenticationManager authenticationManager;
     private UserRepository userRepository;
     public JwtService jwtService;
@@ -45,8 +46,8 @@ public class UserService {
             AuthenticationManager authenticationManager,
             UserRepository userRepository,
             MeterRegistry registry,
-            @Value("${ACCESS_TOKEN_TTL}") int ACCESS_TOKEN_TTL,
-            @Value("${REFRESH_TOKEN_TTL}") int REFRESH_TOKEN_TTL
+            @Value("${ACCESS_TOKEN_TTL}") Duration ACCESS_TOKEN_TTL,
+            @Value("${REFRESH_TOKEN_TTL}") Duration REFRESH_TOKEN_TTL
     ) {
         this.userRepository = userRepository;
         this.authenticationManager = authenticationManager;

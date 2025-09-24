@@ -1,0 +1,40 @@
+package org.example.authservice.users;
+
+import jakarta.validation.Valid;
+import lombok.AllArgsConstructor;
+import org.example.authservice.users.records.AuthUserDTO;
+import org.example.authservice.users.records.CreateUserDTO;
+import org.example.authservice.users.records.UserDTO;
+import org.example.authservice.users.records.UserTokenInfoDTO;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/v1/auth")
+@AllArgsConstructor
+public class UserController {
+    private UserService userService;
+
+    @PostMapping("/registration")
+    public ResponseEntity<UserDTO> registerUser(@RequestBody @Valid CreateUserDTO userDTO) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(userService.createUser(userDTO));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<UserDTO> login(@RequestBody @Valid AuthUserDTO userDTO) {
+        return ResponseEntity.ok(userService.login(userDTO));
+    }
+
+    @PostMapping("/validate")
+    public ResponseEntity<UserTokenInfoDTO> validateToken(@RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+
+        return ResponseEntity.ok(userService.validateToken(token));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<UserDTO> refreshToken(@RequestBody String refreshToken) {
+        return ResponseEntity.ok(userService.refresh(refreshToken));
+    }
+}

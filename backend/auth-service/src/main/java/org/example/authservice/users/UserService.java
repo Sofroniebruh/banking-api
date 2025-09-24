@@ -1,7 +1,7 @@
 package org.example.authservice.users;
 
-import lombok.AllArgsConstructor;
-import lombok.RequiredArgsConstructor;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.example.authservice.jwt_validators.JwtService;
 import org.example.authservice.users.exceptions.InternalErrorException;
 import org.example.authservice.users.exceptions.InvalidTokenException;
@@ -10,7 +10,6 @@ import org.example.authservice.users.records.AuthUserDTO;
 import org.example.authservice.users.records.CreateUserDTO;
 import org.example.authservice.users.records.UserDTO;
 import org.example.authservice.users.records.UserTokenInfoDTO;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -35,12 +34,17 @@ public class UserService {
     private final AuthenticationManager authenticationManager;
     private UserRepository userRepository;
     public JwtService jwtService;
+    // My metrics for prometheus
+    private final Counter userCreatedCounter;
+    private final Counter userErrorCounter;
+    private final Counter tokenErrorCounter;
 
     public UserService(
             PasswordEncoder passwordEncoder,
             UserDetailsService userDetailsService,
             AuthenticationManager authenticationManager,
             UserRepository userRepository,
+            MeterRegistry registry,
             @Value("${ACCESS_TOKEN_TTL}") int ACCESS_TOKEN_TTL,
             @Value("${REFRESH_TOKEN_TTL}") int REFRESH_TOKEN_TTL
     ) {
@@ -50,6 +54,15 @@ public class UserService {
         this.userDetailsService = userDetailsService;
         this.ACCESS_TOKEN_TTL = ACCESS_TOKEN_TTL;
         this.REFRESH_TOKEN_TTL = REFRESH_TOKEN_TTL;
+        this.userCreatedCounter = Counter.builder("users.created.total")
+                .description("Total users created successfully")
+                .register(registry);
+        this.userErrorCounter = Counter.builder("users.error.total")
+                .description("Total errors while creating users")
+                .register(registry);
+        this.tokenErrorCounter = Counter.builder("tokens.error.total")
+                .description("Total errors while validating tokens")
+                .register(registry);
     }
 
     @Transactional
@@ -71,9 +84,12 @@ public class UserService {
             String accessToken = tokens.get("access_token");
             String refreshToken = tokens.get("refresh_token");
 
+            userCreatedCounter.increment();
+
             return UserDTO.fromEntity(userRepository.save(user), accessToken, refreshToken);
         } catch (Exception e) {
             logger.error("Error creating user: ", e);
+            userErrorCounter.increment();
             throw new InternalErrorException("Internal Server Error");
         }
     }
@@ -123,6 +139,7 @@ public class UserService {
             return new UserTokenInfoDTO(email, userId, roles);
         } catch (Exception e) {
             logger.error("Error validating token: ", e);
+            tokenErrorCounter.increment();
             throw new InternalErrorException("Internal Server Error");
         }
     }

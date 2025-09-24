@@ -28,12 +28,3 @@ Thumbs.db
 # Logs
 *.log
 logs/
-
-# Other
-.env.local
-.env.development
-.env.test
-.env.production
-node_modules/
-*.tmp
-*.temp

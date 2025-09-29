@@ -27,6 +27,8 @@ import java.util.stream.Collectors;
 public class JwtAuthFilter extends OncePerRequestFilter {
     @Autowired
     private WebClient authServiceWebClient;
+    @Autowired
+    private AuthService authService;
 
     @Value("${INTERNAL_SERVICE_SECRET}")
     private String INTERNAL_SERVICE_SECRET;
@@ -63,7 +65,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         final String token = authHeader.substring(7);
 
         try {
-            User user = validateTokenWithAuthService(token);
+            User user = authService.validateTokenWithAuthService(token);
 
             if (user == null) {
                 unauthorizedResponse(response);
@@ -137,24 +139,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         } catch (Exception e) {
             logger.error("Error handling auth endpoint", e);
             unauthorizedResponse(response);
-        }
-    }
-
-    private User validateTokenWithAuthService(String token) {
-        try {
-            return authServiceWebClient
-                    .post()
-                    .uri("/api/v1/auth/validate")
-                    .header("Authorization", "Bearer " + token)
-                    .retrieve()
-                    .bodyToMono(User.class)
-                    .timeout(Duration.ofSeconds(10))
-                    .subscribeOn(Schedulers.boundedElastic())
-                    .block();
-
-        } catch (Exception e) {
-            logger.warn("Failed to validate token with auth service", e);
-            return null;
         }
     }
 

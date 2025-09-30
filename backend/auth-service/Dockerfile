@@ -18,6 +18,8 @@ FROM openjdk:17-jdk-slim
 
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
 # Copy JAR from build stage
 COPY --from=build /app/target/*.jar auth-service.jar
 

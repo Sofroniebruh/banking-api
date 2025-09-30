@@ -8,30 +8,34 @@ import lombok.NonNull;
 import org.example.apigateway.users.Role;
 import org.example.apigateway.users.User;
 import org.example.apigateway.validation.records.AuthResponse;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.ContentCachingRequestWrapper;
-import reactor.core.scheduler.Schedulers;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.time.Duration;
 import java.util.stream.Collectors;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
-    @Autowired
-    private WebClient authServiceWebClient;
-    @Autowired
-    private AuthService authService;
+    private final RestClient restClient;
+    private final AuthService authService;
+    private final Logger logger = LoggerFactory.getLogger(JwtAuthFilter.class);
 
     @Value("${INTERNAL_SERVICE_SECRET}")
     private String INTERNAL_SERVICE_SECRET;
+
+    public JwtAuthFilter(@Qualifier("authRestClient") RestClient restClient, AuthService authService) {
+        this.restClient = restClient;
+        this.authService = authService;
+    }
 
     @Override
     protected void doFilterInternal(
@@ -95,16 +99,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String authPath = requestURI.contains("/login") ?
                     "/api/v1/auth/login" : "/api/v1/auth/register";
 
-            AuthResponse authResponse = authServiceWebClient
+            AuthResponse authResponse = restClient
                     .post()
                     .uri(authPath)
                     .header("Content-Type", "application/json")
-                    .bodyValue(requestBody)
+                    .body(requestBody)
                     .retrieve()
-                    .bodyToMono(AuthResponse.class)
-                    .timeout(Duration.ofSeconds(10))
-                    .subscribeOn(Schedulers.boundedElastic())
-                    .block();
+                    .body(AuthResponse.class);
 
             if (authResponse != null && authResponse.user() != null) {
                 setSecurityContext(authResponse.user());

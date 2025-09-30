@@ -26,7 +26,14 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/v1/auth/**"
+                                "/api/v1/auth/**",
+                                "/actuator/health",
+                                "/actuator/health/**", 
+                                "/actuator/info",
+                                "/actuator/metrics",
+                                "/actuator/metrics/**",
+                                "/actuator/prometheus",
+                                "/metrics/**"
                         )
                         .permitAll()
                         .requestMatchers("/api/v1/auth/verify")

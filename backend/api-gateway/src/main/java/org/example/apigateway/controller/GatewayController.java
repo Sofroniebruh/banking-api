@@ -8,11 +8,12 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestClient;
 
 @RestController
-@RequiredArgsConstructor
 public class GatewayController {
-
-    @Qualifier("downstreamRestClient")
     private final RestClient downstreamRestClient;
+
+    public GatewayController(@Qualifier("downstreamRestClient") RestClient downstreamRestClient) {
+        this.downstreamRestClient = downstreamRestClient;
+    }
 
     @RequestMapping("/api/v1/users/**")
     public ResponseEntity<String> proxyToUserService(

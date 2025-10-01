@@ -25,14 +25,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({
             TokenGeneratorException.class,
     })
-    public ResponseEntity<?> handleTokenException(UserException e) {
+    public ResponseEntity<?> handleTokenException(TokenGeneratorException e) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
     }
 
     @ExceptionHandler({
             InvalidTokenException.class,
     })
-    public ResponseEntity<?> handleInvalidTokenException(UserException e) {
+    public ResponseEntity<?> handleInvalidTokenException(InvalidTokenException e) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
     }
 
@@ -60,7 +60,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({
             UsernameNotFoundException.class,
     })
-    public ResponseEntity<?> handleUsernameNotFoundException(RuntimeException e) {
+    public ResponseEntity<?> handleUsernameNotFoundException(UsernameNotFoundException e) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
     }
 }

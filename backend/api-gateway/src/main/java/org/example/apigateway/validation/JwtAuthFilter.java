@@ -7,7 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
 import org.example.apigateway.users.Role;
 import org.example.apigateway.users.User;
-import org.example.apigateway.validation.records.AuthResponse;
+import org.example.apigateway.validation.records.UserDTO;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -28,9 +28,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final RestClient restClient;
     private final AuthService authService;
     private final Logger logger = LoggerFactory.getLogger(JwtAuthFilter.class);
-    @Value("BASE_AUTH_SERVICE_URL")
+    @Value("${BASE_AUTH_SERVICE_URL}")
     private String BASE_AUTH_SERVICE_URL;
-
     @Value("${INTERNAL_SERVICE_SECRET}")
     private String INTERNAL_SERVICE_SECRET;
 
@@ -90,58 +89,87 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private boolean isAuthEndpoint(String uri) {
         return uri.contains("/api/v1/auth/login") ||
-                uri.contains("/api/v1/auth/register");
+                uri.contains("/api/v1/auth/registration");
     }
 
     private void handleAuthEndpoint(ContentCachingRequestWrapper request,
                                     HttpServletResponse response,
                                     String requestURI) throws IOException {
         try {
-            String requestBody = request.getContentAsString();
+            String requestBody = new String(request.getContentAsByteArray());
+            if (requestBody.isEmpty()) {
+                requestBody = request.getReader().lines()
+                        .collect(Collectors.joining(System.lineSeparator()));
+            }
+            
             String authPath = requestURI.contains("/login") ?
-                    "/api/v1/auth/login" : "/api/v1/auth/register";
+                    "/api/v1/auth/login" : "/api/v1/auth/registration";
 
-            AuthResponse authResponse = restClient
-                    .post()
-                    .uri(BASE_AUTH_SERVICE_URL + authPath)
-                    .header("Content-Type", "application/json")
-                    .body(requestBody)
-                    .retrieve()
-                    .body(AuthResponse.class);
+            logger.info("Forwarding to: " + BASE_AUTH_SERVICE_URL + authPath);
+            logger.info("Request body: " + requestBody);
 
-            if (authResponse != null && authResponse.user() != null) {
-                setSecurityContext(authResponse.user());
+            try {
+                UserDTO authResponse = restClient
+                        .post()
+                        .uri(BASE_AUTH_SERVICE_URL + authPath)
+                        .header("Content-Type", "application/json")
+                        .header("X-Internal-Request", INTERNAL_SERVICE_SECRET)
+                        .body(requestBody)
+                        .retrieve()
+                        .body(UserDTO.class);
 
-                response.setStatus(HttpServletResponse.SC_OK);
-                response.setContentType("application/json");
+                logger.info("Response body: " + authResponse);
 
-                String responseBody = String.format("""
-                        {
-                            "token": "%s",
-                            "user": {
-                                "id": "%s",
-                                "email": "%s",
-                                "roles": [%s]
+                if (authResponse != null && authResponse.id() != null) {
+                    User user = new User();
+
+                    user.setId(authResponse.id());
+                    user.setName(authResponse.name());
+                    user.setEmail(authResponse.email());
+                    user.setRoles(authResponse.roles());
+
+                    setSecurityContext(user);
+
+                    response.setStatus(HttpServletResponse.SC_OK);
+                    response.setContentType("application/json");
+
+                    String responseBody = String.format("""
+                            {
+                                "token": "%s",
+                                "user": {
+                                    "id": "%s",
+                                    "email": "%s",
+                                    "roles": [%s]
+                                }
                             }
-                        }
-                        """,
-                        authResponse.token(),
-                        authResponse.user().getId(),
-                        authResponse.user().getEmail(),
-                        authResponse.user().getRoles().stream()
-                                .map(role -> "\"" + role.name() + "\"")
-                                .collect(Collectors.joining(", "))
-                );
+                            """,
+                            authResponse.accessToken(),
+                            authResponse.id(),
+                            authResponse.email(),
+                            authResponse.roles().stream()
+                                    .map(role -> "\"" + role.name() + "\"")
+                                    .collect(Collectors.joining(", "))
+                    );
 
-                response.getWriter().write(responseBody);
+                    response.getWriter().write(responseBody);
+                    response.getWriter().flush();
+                } else {
+                    unauthorizedResponse(response);
+                }
+            } catch (org.springframework.web.client.HttpClientErrorException e) {
+                logger.error("Auth service returned client error: " + e.getStatusCode() + " - " + e.getResponseBodyAsString());
+                response.setStatus(e.getStatusCode().value());
+                response.setContentType("application/json");
+                response.getWriter().write(e.getResponseBodyAsString());
                 response.getWriter().flush();
-            } else {
-                unauthorizedResponse(response);
             }
 
         } catch (Exception e) {
-            logger.error("Error handling auth endpoint", e);
-            unauthorizedResponse(response);
+            logger.error("Error handling auth endpoint" + e.getCause() + " - " + e.getStackTrace());
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"error\":\"Authentication service error: " + e.getMessage() + "\"}");
+            response.getWriter().flush();
         }
     }
 
@@ -162,7 +190,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 .map(Role::name)
                 .collect(Collectors.joining(",")));
         request.setAttribute("X-User-Email", user.getEmail());
-        request.setAttribute("X-Service-Token", INTERNAL_SERVICE_SECRET);
+        request.setAttribute("X-Internal-Request", INTERNAL_SERVICE_SECRET);
     }
 
     private void unauthorizedResponse(HttpServletResponse response) throws IOException {

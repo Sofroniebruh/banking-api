@@ -15,6 +15,7 @@ import java.util.UUID;
 @Data
 public class User implements UserDetails {
     String email;
+    String name;
     UUID id;
     List<Role> roles;
 

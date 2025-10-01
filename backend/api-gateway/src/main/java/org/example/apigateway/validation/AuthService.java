@@ -6,6 +6,7 @@ import org.example.apigateway.users.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
@@ -13,9 +14,15 @@ import org.springframework.web.client.RestClient;
 public class AuthService {
     private final RestClient restClient;
     private final Logger logger = LoggerFactory.getLogger(AuthService.class);
+    private final String INTERNAL_SERVICE_SECRET;
+    private final String BASE_AUTH_SERVICE_URL;
 
-    public AuthService(@Qualifier("authRestClient") RestClient restClient) {
+    public AuthService(@Qualifier("downstreamRestClient") RestClient restClient,
+                       @Value("${INTERNAL_SERVICE_SECRET}") String internalServiceSecret,
+                       @Value("${BASE_AUTH_SERVICE_URL}") String baseAuthServiceUrl) {
         this.restClient = restClient;
+        this.INTERNAL_SERVICE_SECRET = internalServiceSecret;
+        this.BASE_AUTH_SERVICE_URL = baseAuthServiceUrl;
     }
 
     @CircuitBreaker(name = "authService", fallbackMethod = "fallback")
@@ -23,8 +30,9 @@ public class AuthService {
         try {
             return restClient
                     .post()
-                    .uri("/api/v1/auth/validate")
+                    .uri(BASE_AUTH_SERVICE_URL + "/api/v1/auth/validate")
                     .header("Authorization", "Bearer " + token)
+                    .header("X-Internal-Request", INTERNAL_SERVICE_SECRET)
                     .retrieve()
                     .body(User.class);
         } catch (Exception e) {

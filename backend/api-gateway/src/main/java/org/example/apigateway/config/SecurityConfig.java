@@ -36,8 +36,6 @@ public class SecurityConfig {
                                 "/metrics/**"
                         )
                         .permitAll()
-                        .requestMatchers("/api/v1/auth/verify")
-                        .authenticated()
                         .anyRequest()
                         .authenticated()
                 )

@@ -14,14 +14,6 @@ public class RestClientConfig {
     }
 
     @Bean
-    @Qualifier("authRestClient")
-    public RestClient authRestClient(RestClient.Builder builder) {
-        return builder
-                .baseUrl("http://auth-service:8081")
-                .build();
-    }
-
-    @Bean
     @Qualifier("downstreamRestClient")
     public RestClient downstreamRestClient(RestClient.Builder builder) {
         return builder

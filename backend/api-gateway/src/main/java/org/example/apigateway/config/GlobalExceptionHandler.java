@@ -14,6 +14,6 @@ public class GlobalExceptionHandler {
             AuthenticationServiceUnavailable.class,
     })
     public ResponseEntity<?> handleUserException(AuthenticationException e) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
     }
 }

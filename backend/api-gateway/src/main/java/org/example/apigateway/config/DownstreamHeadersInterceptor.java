@@ -26,14 +26,14 @@ public class DownstreamHeadersInterceptor implements ClientHttpRequestIntercepto
             addHeaderIfPresent(request, servletRequest, "X-User-ID");
             addHeaderIfPresent(request, servletRequest, "X-User-Roles");
             addHeaderIfPresent(request, servletRequest, "X-User-Email");
-            addHeaderIfPresent(request, servletRequest, "X-Service-Token");
+            addHeaderIfPresent(request, servletRequest, "X-Internal-Request");
         }
 
         return execution.execute(request, body);
     }
 
     private void addHeaderIfPresent(HttpRequest request, HttpServletRequest servletRequest, String headerName) {
-        Object value = servletRequest.getAttribute(headerName);
+        Object value = servletRequest.getHeader(headerName);
         if (value != null) {
             request.getHeaders().add(headerName, value.toString());
         }

@@ -2,30 +2,12 @@ spring:
   application:
     name: api-gateway
 
-  cloud:
-    gateway:
-      routes:
-        - id: auth-service
-          uri: http://auth-service:8081
-          predicates:
-            - Path=/api/v1/auth/**
-          filters:
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 5
-                redis-rate-limiter.burstCapacity: 10
-                key-resolver: "#ipKeyResolver"
-        
-        - id: auth-service-metrics
-          uri: http://auth-service:8081
-          predicates:
-            - Path=/metrics/auth-service/**
-          filters:
-            - StripPrefix=2
-            - AddRequestHeader=X-Internal-Request, ${INTERNAL_SERVICE_SECRET}
-
 server:
   port: 8080
+
+# Service Configuration
+BASE_AUTH_SERVICE_URL: ${BASE_AUTH_SERVICE_URL:http://auth-service:8081}
+INTERNAL_SERVICE_SECRET: ${INTERNAL_SERVICE_SECRET:default-secret-for-development}
 
 logging:
   level:

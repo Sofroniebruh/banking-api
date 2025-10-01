@@ -5,6 +5,7 @@ import org.example.authservice.users.exceptions.TokenGeneratorException;
 import org.example.authservice.users.exceptions.UserException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -37,6 +38,20 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler({
+            BadCredentialsException.class,
+    })
+    public ResponseEntity<?> handleBadCredentialsException(BadCredentialsException e) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid email or password");
+    }
+
+    @ExceptionHandler({
+            UsernameNotFoundException.class,
+    })
+    public ResponseEntity<?> handleUsernameNotFoundException(UsernameNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid email or password");
+    }
+
+    @ExceptionHandler({
             RuntimeException.class,
     })
     public ResponseEntity<?> handleRuntimeException(RuntimeException e) {
@@ -55,12 +70,5 @@ public class GlobalExceptionHandler {
                 ));
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
-    }
-
-    @ExceptionHandler({
-            UsernameNotFoundException.class,
-    })
-    public ResponseEntity<?> handleUsernameNotFoundException(UsernameNotFoundException e) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
     }
 }

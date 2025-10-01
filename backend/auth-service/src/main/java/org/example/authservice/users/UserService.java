@@ -13,6 +13,7 @@ import org.example.authservice.users.records.UserDTO;
 import org.example.authservice.users.records.UserTokenInfoDTO;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -120,6 +121,9 @@ public class UserService {
     @Transactional
     public UserDTO login(AuthUserDTO userDTO) {
         try {
+            User user = userRepository.findUserByEmail(userDTO.email())
+                    .orElseThrow(() -> new UserException(String.format("User with email %s not found", userDTO.email())));
+
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             userDTO.email(),
@@ -127,15 +131,13 @@ public class UserService {
                     )
             );
 
-            User user = userRepository.findUserByEmail(userDTO.email())
-                    .orElseThrow(() -> new UserException(String.format("User with email %s not found", userDTO.email())));
             Map<String, String> tokens = generateTokens(user);
 
             String accessToken = tokens.get("access_token");
             String refreshToken = tokens.get("refresh_token");
 
             return UserDTO.fromEntity(user, accessToken, refreshToken);
-        } catch (UserException ex) {
+        } catch (BadCredentialsException | UserException ex) {
             logger.error("User login failed: ", ex);
             userErrorCounter.increment();
 

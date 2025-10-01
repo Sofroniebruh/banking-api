@@ -9,7 +9,8 @@ import java.util.UUID;
 public record UserDTO(
         UUID id,
         String name,
-        String email, List<Role> roles,
+        String email,
+        List<Role> roles,
         String accessToken,
         String refreshToken
 ) {

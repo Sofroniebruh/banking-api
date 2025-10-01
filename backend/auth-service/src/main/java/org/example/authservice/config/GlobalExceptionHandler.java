@@ -1,8 +1,11 @@
 package org.example.authservice.config;
 
+import org.example.authservice.users.exceptions.InvalidTokenException;
+import org.example.authservice.users.exceptions.TokenGeneratorException;
 import org.example.authservice.users.exceptions.UserException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -16,6 +19,20 @@ public class GlobalExceptionHandler {
             UserException.class,
     })
     public ResponseEntity<?> handleUserException(UserException e) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+    }
+
+    @ExceptionHandler({
+            TokenGeneratorException.class,
+    })
+    public ResponseEntity<?> handleTokenException(UserException e) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+    }
+
+    @ExceptionHandler({
+            InvalidTokenException.class,
+    })
+    public ResponseEntity<?> handleInvalidTokenException(UserException e) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
     }
 
@@ -38,5 +55,12 @@ public class GlobalExceptionHandler {
                 ));
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
+    }
+
+    @ExceptionHandler({
+            UsernameNotFoundException.class,
+    })
+    public ResponseEntity<?> handleUsernameNotFoundException(RuntimeException e) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
     }
 }

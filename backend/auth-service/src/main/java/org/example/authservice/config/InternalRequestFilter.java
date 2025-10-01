@@ -20,18 +20,12 @@ public class InternalRequestFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, 
                                   HttpServletResponse response, 
                                   FilterChain filterChain) throws ServletException, IOException {
-        
-        String requestURI = request.getRequestURI();
-        
-        // Allow actuator endpoints only from internal requests (gateway)
-        if (requestURI.startsWith("/actuator/")) {
-            String internalHeader = request.getHeader("X-Internal-Request");
-            
-            if (internalHeader == null || !internalHeader.equals(internalSecret)) {
-                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                response.getWriter().write("{\"error\":\"Access denied\"}");
-                return;
-            }
+        String internalHeader = request.getHeader("X-Internal-Request");
+
+        if (internalHeader == null || !internalHeader.equals(internalSecret)) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.getWriter().write("{\"error\":\"Access denied\"}");
+            return;
         }
         
         filterChain.doFilter(request, response);

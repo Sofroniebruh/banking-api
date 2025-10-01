@@ -28,11 +28,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final RestClient restClient;
     private final AuthService authService;
     private final Logger logger = LoggerFactory.getLogger(JwtAuthFilter.class);
+    @Value("BASE_AUTH_SERVICE_URL")
+    private String BASE_AUTH_SERVICE_URL;
 
     @Value("${INTERNAL_SERVICE_SECRET}")
     private String INTERNAL_SERVICE_SECRET;
 
-    public JwtAuthFilter(@Qualifier("authRestClient") RestClient restClient, AuthService authService) {
+    public JwtAuthFilter(@Qualifier("downstreamRestClient") RestClient restClient, AuthService authService) {
         this.restClient = restClient;
         this.authService = authService;
     }
@@ -101,7 +103,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
             AuthResponse authResponse = restClient
                     .post()
-                    .uri(authPath)
+                    .uri(BASE_AUTH_SERVICE_URL + authPath)
                     .header("Content-Type", "application/json")
                     .body(requestBody)
                     .retrieve()
@@ -156,11 +158,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private void setCustomHeaders(HttpServletRequest request, User user) {
         request.setAttribute("X-User-ID", user.getId().toString());
-        request.setAttribute("X-User-ROLES", user.getRoles().stream()
+        request.setAttribute("X-User-Roles", user.getRoles().stream()
                 .map(Role::name)
-                .collect(Collectors.joining(", ")));
-        request.setAttribute("X-User-EMAIL", user.getEmail());
-        request.setAttribute("X-Service-TOKEN", INTERNAL_SERVICE_SECRET);
+                .collect(Collectors.joining(",")));
+        request.setAttribute("X-User-Email", user.getEmail());
+        request.setAttribute("X-Service-Token", INTERNAL_SERVICE_SECRET);
     }
 
     private void unauthorizedResponse(HttpServletResponse response) throws IOException {

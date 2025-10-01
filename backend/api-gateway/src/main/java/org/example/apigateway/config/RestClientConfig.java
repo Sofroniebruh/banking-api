@@ -20,4 +20,12 @@ public class RestClientConfig {
                 .baseUrl("http://auth-service:8081")
                 .build();
     }
+
+    @Bean
+    @Qualifier("downstreamRestClient")
+    public RestClient downstreamRestClient(RestClient.Builder builder) {
+        return builder
+                .requestInterceptor(new DownstreamHeadersInterceptor())
+                .build();
+    }
 }

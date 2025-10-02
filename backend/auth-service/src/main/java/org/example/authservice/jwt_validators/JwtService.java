@@ -23,7 +23,7 @@ public class JwtService {
     }
 
     public UUID extractUserId(String token) {
-        return extractClaim(token, claims -> claims.get("id", UUID.class));
+        return extractClaim(token, claims -> UUID.fromString(claims.get("id", String.class)));
     }
 
     public List<String> extractUserRoles(String token) {

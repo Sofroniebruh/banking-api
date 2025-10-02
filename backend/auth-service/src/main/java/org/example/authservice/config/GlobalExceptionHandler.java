@@ -1,5 +1,6 @@
 package org.example.authservice.config;
 
+import io.jsonwebtoken.ExpiredJwtException;
 import org.example.authservice.users.exceptions.InvalidTokenException;
 import org.example.authservice.users.exceptions.TokenGeneratorException;
 import org.example.authservice.users.exceptions.UserException;
@@ -20,6 +21,13 @@ public class GlobalExceptionHandler {
             UserException.class,
     })
     public ResponseEntity<?> handleUserException(UserException e) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+    }
+
+    @ExceptionHandler({
+            ExpiredJwtException.class,
+    })
+    public ResponseEntity<?> handleExpiredJwtException(ExpiredJwtException e) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
     }
 

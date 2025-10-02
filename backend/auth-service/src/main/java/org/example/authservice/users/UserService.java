@@ -1,5 +1,6 @@
 package org.example.authservice.users;
 
+import io.jsonwebtoken.ExpiredJwtException;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.example.authservice.jwt_validators.JwtService;
@@ -15,6 +16,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -26,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -163,16 +167,17 @@ public class UserService {
                 throw new InvalidTokenException("Invalid token");
             }
 
-            User user = userRepository.findUserByEmail(email)
-                    .orElseThrow(() -> new UserException(String.format("User with email %s not found", email)));
-            UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
+            UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
             if (!jwtService.isTokenValid(token, userDetails)) {
                 throw new InvalidTokenException("Invalid token");
             }
 
-            List<Role> roles = user.getRoles();
-            UUID userId = user.getId();
+            UUID userId = jwtService.extractUserId(token);
+            List<Role> roles = jwtService.extractUserRoles(token)
+                    .stream()
+                    .map(Role::valueOf)
+                    .collect(Collectors.toList());
 
             return new UserTokenInfoDTO(email, userId, roles);
         } catch (InvalidTokenException ex) {
@@ -185,7 +190,13 @@ public class UserService {
             userErrorCounter.increment();
 
             throw ex;
-        } catch (Exception ex) {
+        }
+        catch (ExpiredJwtException ex) {
+            logger.error("Token expired during token validation: ", ex);
+            tokenErrorCounter.increment();
+
+            throw ex;
+        }catch (Exception ex) {
             logger.error("Error validating token: ", ex);
             internalErrorCounter.increment();
 
@@ -200,8 +211,8 @@ public class UserService {
 
             UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
 
-            claims.put("roles", user.getRoles());
-            claims.put("id", user.getId());
+            claims.put("roles", user.getRoles().stream().map(Role::name).collect(Collectors.toList()));
+            claims.put("id", user.getId().toString());
 
             String accessToken = jwtService.generateToken(claims, userDetails, ACCESS_TOKEN_TTL);
             String refreshToken = jwtService.generateToken(claims, userDetails, REFRESH_TOKEN_TTL);

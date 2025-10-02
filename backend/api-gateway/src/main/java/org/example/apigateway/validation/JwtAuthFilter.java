@@ -11,6 +11,7 @@ import org.example.apigateway.validation.records.UserDTO;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -21,6 +22,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
@@ -73,6 +76,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             User user = authService.validateTokenWithAuthService(token);
 
             if (user == null) {
+                logger.warn("Invalid token");
                 unauthorizedResponse(response);
 
                 return;
@@ -82,8 +86,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             setCustomHeaders(request, user);
             filterChain.doFilter(request, response);
         } catch (Exception e) {
-            logger.error("Authentication error", e);
-            unauthorizedResponse(response);
+            internalError(response, e);
         }
     }
 
@@ -147,7 +150,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                             authResponse.id(),
                             authResponse.email(),
                             authResponse.roles().stream()
-                                    .map(role -> "\"" + role.name() + "\"")
+                                    .map(role -> "\"" + user.getRoles() + "\"")
                                     .collect(Collectors.joining(", "))
                     );
 
@@ -165,11 +168,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
 
         } catch (Exception e) {
-            logger.error("Error handling auth endpoint" + e.getCause() + " - " + e.getStackTrace());
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            response.setContentType("application/json");
-            response.getWriter().write("{\"error\":\"Authentication service error: " + e.getMessage() + "\"}");
-            response.getWriter().flush();
+            internalError(response, e);
         }
     }
 
@@ -177,20 +176,26 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 user,
                 null,
-                user.getRoles().stream()
-                        .map(role -> new SimpleGrantedAuthority("ROLE_" + role.name()))
-                        .collect(Collectors.toList())
+                user.getAuthorities()
         );
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 
     private void setCustomHeaders(HttpServletRequest request, User user) {
-        request.setAttribute("X-User-ID", user.getId().toString());
-        request.setAttribute("X-User-Roles", user.getRoles().stream()
-                .map(Role::name)
+        request.setAttribute("X-User-ID", UUID.fromString(user.getId().toString()));
+        request.setAttribute("X-User-Roles", user.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(",")));
         request.setAttribute("X-User-Email", user.getEmail());
         request.setAttribute("X-Internal-Request", INTERNAL_SERVICE_SECRET);
+    }
+
+    private void internalError(HttpServletResponse response, Exception e) throws IOException {
+        logger.error("Error handling auth endpoint" + e.getCause() + " - " + e.getStackTrace());
+        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        response.setContentType("application/json");
+        response.getWriter().write("{\"error\":\"Authentication service error: " + e.getMessage() + "\"}");
+        response.getWriter().flush();
     }
 
     private void unauthorizedResponse(HttpServletResponse response) throws IOException {

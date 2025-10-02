@@ -2,7 +2,9 @@ package org.example.apigateway.validation;
 
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.example.apigateway.config.exceptions.AuthenticationServiceUnavailable;
+import org.example.apigateway.config.exceptions.AuthServiceClientException;
 import org.example.apigateway.users.User;
+import org.example.apigateway.validation.records.UserTokenInfoDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -28,15 +30,43 @@ public class AuthService {
     @CircuitBreaker(name = "authService", fallbackMethod = "fallback")
     public User validateTokenWithAuthService(String token) {
         try {
-            return restClient
+            logger.warn("URL used" + BASE_AUTH_SERVICE_URL + "/api/v1/auth/validate");
+            UserTokenInfoDTO tokenInfo = restClient
                     .post()
                     .uri(BASE_AUTH_SERVICE_URL + "/api/v1/auth/validate")
                     .header("Authorization", "Bearer " + token)
                     .header("X-Internal-Request", INTERNAL_SERVICE_SECRET)
                     .retrieve()
-                    .body(User.class);
+                    .body(UserTokenInfoDTO.class);
+
+            logger.warn("Token info: " + tokenInfo);
+
+            if (tokenInfo == null) {
+                return null;
+            }
+            
+            User user = new User();
+            user.setId(tokenInfo.id());
+            user.setEmail(tokenInfo.email());
+            user.setRoles(tokenInfo.roles());
+            
+            return user;
+        } catch (org.springframework.web.client.HttpClientErrorException ex) {
+            logger.error("Auth service returned client error: " + ex.getStatusCode() + " - " + ex.getResponseBodyAsString());
+            throw new AuthServiceClientException(
+                "Auth service returned client error", 
+                ex.getStatusCode(), 
+                ex.getResponseBodyAsString()
+            );
+        } catch (org.springframework.web.client.HttpServerErrorException ex) {
+            logger.error("Auth service returned server error: " + ex.getStatusCode() + " - " + ex.getResponseBodyAsString());
+            throw new AuthServiceClientException(
+                "Auth service returned server error", 
+                ex.getStatusCode(), 
+                ex.getResponseBodyAsString()
+            );
         } catch (Exception e) {
-            logger.error(e.getMessage());
+            logger.error("Auth service error: " + e.getMessage());
             throw new AuthenticationServiceUnavailable("Auth service unavailable");
         }
     }

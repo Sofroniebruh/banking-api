@@ -34,7 +34,7 @@ public class AuthService {
             UserTokenInfoDTO tokenInfo = restClient
                     .post()
                     .uri(BASE_AUTH_SERVICE_URL + "/api/v1/auth/validate")
-                    .header("Authorization", "Bearer " + token)
+                    .cookie("access_token", token)
                     .header("X-Internal-Request", INTERNAL_SERVICE_SECRET)
                     .retrieve()
                     .body(UserTokenInfoDTO.class);

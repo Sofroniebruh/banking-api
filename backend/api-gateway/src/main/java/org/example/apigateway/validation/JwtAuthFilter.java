@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.stream.Collectors;
 
 @Component
@@ -59,9 +60,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        final String authHeader = request.getHeader("Authorization");
+        final Cookie[] cookies = request.getCookies();
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        if (cookies == null || getAuthTokenFromCookie(cookies) == null) {
             filterChain.doFilter(request, response);
 
             return;
@@ -73,7 +74,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        final String token = authHeader.substring(7);
+        final String token = getAuthTokenFromCookie(cookies);
 
         try {
             User user = authService.validateTokenWithAuthService(token);
@@ -96,6 +97,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private boolean isAuthEndpoint(String uri) {
         return uri.contains("/api/v1/auth/login") ||
                 uri.contains("/api/v1/auth/registration");
+    }
+
+    private String getAuthTokenFromCookie(Cookie[] cookies) {
+        for (Cookie cookie : cookies) {
+            if (cookie.getName().equals("access_token")) {
+                return cookie.getValue();
+            }
+        }
+
+        return null;
     }
 
     private void handleAuthEndpoint(ContentCachingRequestWrapper request,
@@ -162,10 +173,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     refreshTokenCookie.setMaxAge((int) REFRESH_TOKEN_TTL.toSeconds());
 
                     Cookie accessTokenCookie = new Cookie("access_token", authResponse.accessToken());
-                    refreshTokenCookie.setHttpOnly(true);
-                    refreshTokenCookie.setSecure(true);
-                    refreshTokenCookie.setPath("/");
-                    refreshTokenCookie.setMaxAge((int) ACCESS_TOKEN_TTL.toSeconds());
+                    accessTokenCookie.setHttpOnly(true);
+                    accessTokenCookie.setSecure(true);
+                    accessTokenCookie.setPath("/");
+                    accessTokenCookie.setMaxAge((int) ACCESS_TOKEN_TTL.toSeconds());
 
                     response.addCookie(refreshTokenCookie);
                     response.addCookie(accessTokenCookie);

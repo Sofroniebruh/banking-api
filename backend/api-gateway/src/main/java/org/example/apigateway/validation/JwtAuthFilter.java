@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
 import org.example.apigateway.config.HeaderMapRequestWrapper;
+import org.example.apigateway.layers.GatewayService;
 import org.example.apigateway.users.User;
 import org.example.apigateway.validation.records.UserDTO;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -23,7 +24,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.stream.Collectors;
 
 @Component
@@ -31,6 +31,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final RestClient restClient;
     private final AuthService authService;
     private final Logger logger = LoggerFactory.getLogger(JwtAuthFilter.class);
+    private final GatewayService gatewayService;
     @Value("${ACCESS_TOKEN_TTL}")
     private Duration ACCESS_TOKEN_TTL;
     @Value("${REFRESH_TOKEN_TTL}")
@@ -40,9 +41,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @Value("${INTERNAL_SERVICE_SECRET}")
     private String INTERNAL_SERVICE_SECRET;
 
-    public JwtAuthFilter(@Qualifier("downstreamRestClient") RestClient restClient, AuthService authService) {
+    public JwtAuthFilter(@Qualifier("downstreamRestClient") RestClient restClient,
+                         AuthService authService,
+                         GatewayService gatewayService) {
         this.restClient = restClient;
         this.authService = authService;
+        this.gatewayService = gatewayService;
     }
 
     @Override
@@ -166,17 +170,22 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     .collect(Collectors.joining(", "))
                     );
 
-                    Cookie refreshTokenCookie = new Cookie("refresh_token", authResponse.refreshToken());
-                    refreshTokenCookie.setHttpOnly(true);
-                    refreshTokenCookie.setSecure(true);
-                    refreshTokenCookie.setPath("/");
-                    refreshTokenCookie.setMaxAge((int) REFRESH_TOKEN_TTL.toSeconds());
-
-                    Cookie accessTokenCookie = new Cookie("access_token", authResponse.accessToken());
-                    accessTokenCookie.setHttpOnly(true);
-                    accessTokenCookie.setSecure(true);
-                    accessTokenCookie.setPath("/");
-                    accessTokenCookie.setMaxAge((int) ACCESS_TOKEN_TTL.toSeconds());
+                    Cookie refreshTokenCookie = gatewayService.createCookie(
+                            "refresh_token",
+                            authResponse.refreshToken(),
+                            (int) REFRESH_TOKEN_TTL.toSeconds(),
+                            true,
+                            "/",
+                            true
+                    );
+                    Cookie accessTokenCookie = gatewayService.createCookie(
+                            "access_token",
+                            authResponse.accessToken(),
+                            (int) ACCESS_TOKEN_TTL.toSeconds(),
+                            true,
+                            "/",
+                            true
+                    );
 
                     response.addCookie(refreshTokenCookie);
                     response.addCookie(accessTokenCookie);

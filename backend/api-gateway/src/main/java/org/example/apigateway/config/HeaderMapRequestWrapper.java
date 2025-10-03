@@ -12,6 +12,10 @@ public class HeaderMapRequestWrapper extends HttpServletRequestWrapper {
         super(request);
     }
 
+    public void addHeader(String name, String value) {
+        customHeaders.put(name, value);
+    }
+
     @Override
     public String getHeader(String name) {
         String value = customHeaders.get(name);

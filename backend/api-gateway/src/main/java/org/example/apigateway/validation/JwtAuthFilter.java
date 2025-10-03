@@ -6,6 +6,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
+import org.example.apigateway.config.HeaderMapRequestWrapper;
 import org.example.apigateway.users.User;
 import org.example.apigateway.validation.records.UserDTO;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -22,7 +23,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.time.Duration;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
@@ -86,8 +86,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
 
             setSecurityContext(user);
-            setCustomHeaders(request, user);
-            filterChain.doFilter(request, response);
+            HeaderMapRequestWrapper wrappedRequest = setCustomHeaders(request, user);
+            filterChain.doFilter(wrappedRequest, response);
         } catch (Exception e) {
             internalError(response, e);
         }
@@ -197,13 +197,24 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 
-    private void setCustomHeaders(HttpServletRequest request, User user) {
-        request.setAttribute("X-User-ID", UUID.fromString(user.getId().toString()));
-        request.setAttribute("X-User-Roles", user.getAuthorities().stream()
+    private HeaderMapRequestWrapper setCustomHeaders(HttpServletRequest request, User user) {
+        HeaderMapRequestWrapper wrapper = new HeaderMapRequestWrapper(request);
+        Cookie[] cookies = request.getCookies();
+
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                wrapper.addHeader(cookie.getName(), cookie.getValue());
+            }
+        }
+
+        wrapper.addHeader("X-User-ID", user.getId().toString());
+        wrapper.addHeader("X-User-Roles", user.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(",")));
-        request.setAttribute("X-User-Email", user.getEmail());
-        request.setAttribute("X-Internal-Request", INTERNAL_SERVICE_SECRET);
+        wrapper.addHeader("X-User-Email", user.getEmail());
+        wrapper.addHeader("X-Internal-Request", INTERNAL_SERVICE_SECRET);
+
+        return wrapper;
     }
 
     private void internalError(HttpServletResponse response, Exception e) throws IOException {

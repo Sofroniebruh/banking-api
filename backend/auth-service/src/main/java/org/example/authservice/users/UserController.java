@@ -27,14 +27,14 @@ public class UserController {
     }
 
     @PostMapping("/validate")
-    public ResponseEntity<UserTokenInfoDTO> validateToken(@RequestHeader("Authorization") String authHeader) {
-        String token = authHeader.replace("Bearer ", "");
-
-        return ResponseEntity.ok(userService.validateToken(token));
+    public ResponseEntity<UserTokenInfoDTO> validateToken(
+            @CookieValue(value = "access_token") String accessToken) {
+        return ResponseEntity.ok(userService.validateToken(accessToken));
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<UserDTO> refreshToken(@RequestBody String refreshToken) {
+    public ResponseEntity<UserDTO> refreshToken(
+            @CookieValue(value = "refresh_token") String refreshToken) {
         return ResponseEntity.ok(userService.refresh(refreshToken));
     }
 }

@@ -39,6 +39,13 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler({
+            UsernameNotFoundException.class,
+    })
+    public ResponseEntity<?> handleUsernameNotFoundException(UsernameNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid email or password");
+    }
+
+    @ExceptionHandler({
             InvalidTokenException.class,
     })
     public ResponseEntity<?> handleInvalidTokenException(InvalidTokenException e) {
@@ -49,13 +56,6 @@ public class GlobalExceptionHandler {
             BadCredentialsException.class,
     })
     public ResponseEntity<?> handleBadCredentialsException(BadCredentialsException e) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid email or password");
-    }
-
-    @ExceptionHandler({
-            UsernameNotFoundException.class,
-    })
-    public ResponseEntity<?> handleUsernameNotFoundException(UsernameNotFoundException e) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid email or password");
     }
 

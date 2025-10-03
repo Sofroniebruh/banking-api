@@ -16,8 +16,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -261,7 +259,7 @@ public class UserService {
             tokenErrorCounter.increment();
 
             throw ex;
-        } catch (UserException ex) {
+        } catch (UsernameNotFoundException | UserException ex) {
             logger.error("User not found during token refresh: ", ex);
             userErrorCounter.increment();
 

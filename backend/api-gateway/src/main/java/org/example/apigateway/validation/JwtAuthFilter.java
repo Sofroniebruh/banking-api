@@ -2,17 +2,16 @@ package org.example.apigateway.validation;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
-import org.example.apigateway.users.Role;
 import org.example.apigateway.users.User;
 import org.example.apigateway.validation.records.UserDTO;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -22,7 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.util.List;
+import java.time.Duration;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -31,6 +30,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final RestClient restClient;
     private final AuthService authService;
     private final Logger logger = LoggerFactory.getLogger(JwtAuthFilter.class);
+    @Value("${ACCESS_TOKEN_TTL}")
+    private Duration ACCESS_TOKEN_TTL;
+    @Value("${REFRESH_TOKEN_TTL}")
+    private Duration REFRESH_TOKEN_TTL;
     @Value("${BASE_AUTH_SERVICE_URL}")
     private String BASE_AUTH_SERVICE_URL;
     @Value("${INTERNAL_SERVICE_SECRET}")
@@ -138,7 +141,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
                     String responseBody = String.format("""
                             {
-                                "token": "%s",
                                 "user": {
                                     "id": "%s",
                                     "email": "%s",
@@ -146,13 +148,27 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                 }
                             }
                             """,
-                            authResponse.accessToken(),
                             authResponse.id(),
                             authResponse.email(),
                             authResponse.roles().stream()
                                     .map(role -> "\"" + user.getRoles() + "\"")
                                     .collect(Collectors.joining(", "))
                     );
+
+                    Cookie refreshTokenCookie = new Cookie("refresh_token", authResponse.refreshToken());
+                    refreshTokenCookie.setHttpOnly(true);
+                    refreshTokenCookie.setSecure(true);
+                    refreshTokenCookie.setPath("/");
+                    refreshTokenCookie.setMaxAge((int) REFRESH_TOKEN_TTL.toSeconds());
+
+                    Cookie accessTokenCookie = new Cookie("access_token", authResponse.accessToken());
+                    refreshTokenCookie.setHttpOnly(true);
+                    refreshTokenCookie.setSecure(true);
+                    refreshTokenCookie.setPath("/");
+                    refreshTokenCookie.setMaxAge((int) ACCESS_TOKEN_TTL.toSeconds());
+
+                    response.addCookie(refreshTokenCookie);
+                    response.addCookie(accessTokenCookie);
 
                     response.getWriter().write(responseBody);
                     response.getWriter().flush();

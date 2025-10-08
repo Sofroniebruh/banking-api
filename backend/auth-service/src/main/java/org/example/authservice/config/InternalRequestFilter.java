@@ -22,7 +22,10 @@ public class InternalRequestFilter extends OncePerRequestFilter {
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
+        
         String internalHeader = request.getHeader("X-Internal-Request");
+
+        logger.warn("X-Internal-Request Header: " + internalHeader);
 
         if (internalHeader == null || !internalHeader.equals(internalSecret)) {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);

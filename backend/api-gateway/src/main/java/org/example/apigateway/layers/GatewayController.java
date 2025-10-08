@@ -41,9 +41,9 @@ public class GatewayController {
             String responseJson = objectMapper.writeValueAsString(responseBody);
             Map<String, Object> responseMap = objectMapper.readValue(responseJson, Map.class);
 
-            if (responseMap.containsKey("access_token") && responseMap.containsKey("refresh_token")) {
-                String accessToken = responseMap.get("access_token").toString();
-                String refreshToken = responseMap.get("refresh_token").toString();
+            if (responseMap.containsKey("accessToken") && responseMap.containsKey("refreshToken")) {
+                String accessToken = responseMap.get("accessToken").toString();
+                String refreshToken = responseMap.get("refreshToken").toString();
 
                 Cookie accessTokenCookie = gatewayService.createCookie(
                         "access_token",
@@ -63,7 +63,6 @@ public class GatewayController {
                 response.addCookie(accessTokenCookie);
                 response.addCookie(refreshTokenCookie);
             }
-
         }
 
         return ResponseEntity

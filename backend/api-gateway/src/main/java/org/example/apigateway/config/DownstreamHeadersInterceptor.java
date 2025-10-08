@@ -1,5 +1,6 @@
 package org.example.apigateway.config;
 
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.NonNull;
 import org.springframework.http.HttpRequest;
@@ -27,6 +28,8 @@ public class DownstreamHeadersInterceptor implements ClientHttpRequestIntercepto
             addHeaderIfPresent(request, servletRequest, "X-User-Roles");
             addHeaderIfPresent(request, servletRequest, "X-User-Email");
             addHeaderIfPresent(request, servletRequest, "X-Internal-Request");
+            
+            addCookiesIfPresent(request, servletRequest);
         }
 
         return execution.execute(request, body);
@@ -36,6 +39,22 @@ public class DownstreamHeadersInterceptor implements ClientHttpRequestIntercepto
         Object value = servletRequest.getHeader(headerName);
         if (value != null) {
             request.getHeaders().add(headerName, value.toString());
+        }
+    }
+
+    private void addCookiesIfPresent(HttpRequest request, HttpServletRequest servletRequest) {
+        Cookie[] cookies = servletRequest.getCookies();
+
+        if (cookies != null && cookies.length > 0) {
+            StringBuilder cookieHeader = new StringBuilder();
+
+            for (int i = 0; i < cookies.length; i++) {
+                if (i > 0) {
+                    cookieHeader.append("; ");
+                }
+                cookieHeader.append(cookies[i].getName()).append("=").append(cookies[i].getValue());
+            }
+            request.getHeaders().add("Cookie", cookieHeader.toString());
         }
     }
 }

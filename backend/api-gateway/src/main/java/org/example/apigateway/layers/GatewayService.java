@@ -27,6 +27,22 @@ public class GatewayService {
         return requestSpec.retrieve().toEntity(Object.class);
     }
 
+    public ResponseEntity<Object> proxyToServiceWithPathRewrite(HttpServletRequest request, Object body, String serviceUrl, String stripPrefix) {
+        String originalPath = request.getRequestURI();
+        String rewrittenPath = originalPath.startsWith(stripPrefix) ? 
+            originalPath.substring(stripPrefix.length()) : originalPath;
+            
+        var requestSpec = downstreamRestClient
+                .method(org.springframework.http.HttpMethod.valueOf(request.getMethod()))
+                .uri(serviceUrl + rewrittenPath);
+
+        if (body != null) {
+            requestSpec.body(body);
+        }
+
+        return requestSpec.retrieve().toEntity(Object.class);
+    }
+
     public Cookie createCookie(String name, String value, int maxAge, boolean httpOnly, String path, boolean secure) {
         Cookie accessTokenCookie = new Cookie(name, value);
         accessTokenCookie.setPath(path);

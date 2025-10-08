@@ -78,6 +78,13 @@ public class GatewayController {
         return gatewayService.proxyToService(request, body, "http://user-service:8082");
     }
 
+    @RequestMapping("/actuator/auth-service/**")
+    public ResponseEntity<Object> proxyToAuthServiceActuator(
+            HttpServletRequest request,
+            @RequestBody(required = false) String body) {
+        return gatewayService.proxyToServiceWithPathRewrite(request, body, "http://auth-service:8081", "/actuator/auth-service");
+    }
+
 //    @RequestMapping("/api/v1/accounts/**")
 //    public ResponseEntity<Object> proxyToAccountService(
 //            HttpServletRequest request,

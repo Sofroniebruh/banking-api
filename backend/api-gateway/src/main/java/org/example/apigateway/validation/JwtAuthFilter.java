@@ -56,10 +56,19 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain) throws ServletException, IOException {
 
         String requestURI = request.getRequestURI();
+        HeaderMapRequestWrapper wrapper = new HeaderMapRequestWrapper(request);
+        wrapper.addHeader("X-Internal-Request", INTERNAL_SERVICE_SECRET);
 
         if (isAuthEndpoint(requestURI)) {
             ContentCachingRequestWrapper cachedRequest = new ContentCachingRequestWrapper(request);
             handleAuthEndpoint(cachedRequest, response, requestURI);
+
+            return;
+        }
+
+        if (isActuatorEndpoint(requestURI)) {
+            logger.warn("Endpoint {} is actuator", requestURI);
+            filterChain.doFilter(wrapper, response);
 
             return;
         }
@@ -91,7 +100,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
 
             setSecurityContext(user);
-            HeaderMapRequestWrapper wrappedRequest = setCustomHeaders(request, user);
+            HeaderMapRequestWrapper wrappedRequest = setCustomHeaders(wrapper, user);
             filterChain.doFilter(wrappedRequest, response);
         } catch (Exception e) {
             internalError(response, e);
@@ -101,6 +110,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private boolean isAuthEndpoint(String uri) {
         return uri.contains("/api/v1/auth/login") ||
                 uri.contains("/api/v1/auth/registration");
+    }
+
+    private boolean isActuatorEndpoint(String uri) {
+        return uri.startsWith("/actuator");
     }
 
     private String getAuthTokenFromCookie(Cookie[] cookies) {
@@ -166,7 +179,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                             authResponse.id(),
                             authResponse.email(),
                             authResponse.roles().stream()
-                                    .map(role -> "\"" + user.getRoles() + "\"")
+                                    .map(role -> "\"" + role + "\"")
                                     .collect(Collectors.joining(", "))
                     );
 
@@ -217,9 +230,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 
-    private HeaderMapRequestWrapper setCustomHeaders(HttpServletRequest request, User user) {
-        HeaderMapRequestWrapper wrapper = new HeaderMapRequestWrapper(request);
-        Cookie[] cookies = request.getCookies();
+    private HeaderMapRequestWrapper setCustomHeaders(HeaderMapRequestWrapper wrapper, User user) {
+        Cookie[] cookies = wrapper.getCookies();
 
         if (cookies != null) {
             for (Cookie cookie : cookies) {
@@ -232,7 +244,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(",")));
         wrapper.addHeader("X-User-Email", user.getEmail());
-        wrapper.addHeader("X-Internal-Request", INTERNAL_SERVICE_SECRET);
 
         return wrapper;
     }

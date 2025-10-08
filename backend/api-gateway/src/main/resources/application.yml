@@ -6,8 +6,8 @@ server:
   port: 8080
 
 # Service Configuration
-BASE_AUTH_SERVICE_URL: ${BASE_AUTH_SERVICE_URL:http://auth-service:8081}
-INTERNAL_SERVICE_SECRET: ${INTERNAL_SERVICE_SECRET:default-secret-for-development}
+BASE_AUTH_SERVICE_URL: ${BASE_AUTH_SERVICE_URL}
+INTERNAL_SERVICE_SECRET: ${INTERNAL_SERVICE_SECRET}
 
 logging:
   level:

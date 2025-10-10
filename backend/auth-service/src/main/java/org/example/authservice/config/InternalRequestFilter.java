@@ -13,7 +13,6 @@ import java.io.IOException;
 
 @Component
 public class InternalRequestFilter extends OncePerRequestFilter {
-
     @Value("${INTERNAL_SERVICE_SECRET}")
     private String internalSecret;
 
@@ -23,9 +22,14 @@ public class InternalRequestFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
         
-        String internalHeader = request.getHeader("X-Internal-Request");
+        String requestPath = request.getRequestURI();
 
-        logger.warn("X-Internal-Request Header: " + internalHeader);
+        if (requestPath.startsWith("/actuator/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        
+        String internalHeader = request.getHeader("X-Internal-Request");
 
         if (internalHeader == null || !internalHeader.equals(internalSecret)) {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);

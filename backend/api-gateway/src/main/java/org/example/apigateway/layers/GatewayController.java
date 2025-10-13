@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
 import java.util.Map;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 @RestController
 public class GatewayController {
@@ -30,16 +31,15 @@ public class GatewayController {
     }
 
     @RequestMapping("/api/v1/auth/**")
-    public ResponseEntity<Object> proxyToAuthService(
+    public ResponseEntity<String> proxyToAuthService(
             HttpServletRequest request,
             HttpServletResponse response,
             @RequestBody(required = false) Object body) throws JsonProcessingException {
-        ResponseEntity<Object> serviceResponse = gatewayService.proxyToService(request, body, "http://auth-service:8081");
-        Object responseBody = serviceResponse.getBody();
+        ResponseEntity<String> serviceResponse = gatewayService.proxyToService(request, body, "http://auth-service:8081");
+        String responseBody = serviceResponse.getBody();
 
         if (responseBody != null) {
-            String responseJson = objectMapper.writeValueAsString(responseBody);
-            Map<String, Object> responseMap = objectMapper.readValue(responseJson, Map.class);
+            Map<String, Object> responseMap = objectMapper.readValue(responseBody, new TypeReference<>() {});
 
             if (responseMap.containsKey("accessToken") && responseMap.containsKey("refreshToken")) {
                 String accessToken = responseMap.get("accessToken").toString();
@@ -72,14 +72,14 @@ public class GatewayController {
     }
 
     @RequestMapping("/api/v1/users/**")
-    public ResponseEntity<Object> proxyToUserService(
+    public ResponseEntity<String> proxyToUserService(
             HttpServletRequest request,
             @RequestBody(required = false) String body) {
         return gatewayService.proxyToService(request, body, "http://user-service:8082");
     }
 
     @RequestMapping("/actuator/auth-service/**")
-    public ResponseEntity<Object> proxyToAuthServiceActuator(
+    public ResponseEntity<String> proxyToAuthServiceActuator(
             HttpServletRequest request,
             @RequestBody(required = false) String body) {
         return gatewayService.proxyToServiceWithPathRewrite(request, body, "http://auth-service:8081", "/actuator/auth-service");

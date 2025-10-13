@@ -15,7 +15,7 @@ public class GatewayService {
         this.downstreamRestClient = downstreamRestClient;
     }
 
-    public ResponseEntity<Object> proxyToService(HttpServletRequest request, Object body, String serviceUrl) {
+    public ResponseEntity<String> proxyToService(HttpServletRequest request, Object body, String serviceUrl) {
         var requestSpec = downstreamRestClient
                 .method(org.springframework.http.HttpMethod.valueOf(request.getMethod()))
                 .uri(serviceUrl + request.getRequestURI());
@@ -24,10 +24,10 @@ public class GatewayService {
             requestSpec.body(body);
         }
 
-        return requestSpec.retrieve().toEntity(Object.class);
+        return requestSpec.retrieve().toEntity(String.class);
     }
 
-    public ResponseEntity<Object> proxyToServiceWithPathRewrite(HttpServletRequest request, Object body, String serviceUrl, String stripPrefix) {
+    public ResponseEntity<String> proxyToServiceWithPathRewrite(HttpServletRequest request, Object body, String serviceUrl, String stripPrefix) {
         String originalPath = request.getRequestURI();
         String rewrittenPath = originalPath.startsWith(stripPrefix) ? 
             originalPath.substring(stripPrefix.length()) : originalPath;
@@ -40,7 +40,7 @@ public class GatewayService {
             requestSpec.body(body);
         }
 
-        return requestSpec.retrieve().toEntity(Object.class);
+        return requestSpec.retrieve().toEntity(String.class);
     }
 
     public Cookie createCookie(String name, String value, int maxAge, boolean httpOnly, String path, boolean secure) {

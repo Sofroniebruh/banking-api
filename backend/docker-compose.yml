@@ -1,0 +1,70 @@
+services:
+  gateway:
+    image: openjdk:21-jdk
+    ports:
+      - "8080:8080"
+    working_dir: /app
+    volumes:
+      - ./api-gateway:/app
+    env_file:
+      - ./api-gateway/.env
+    command: ./mvnw spring-boot:run
+    depends_on:
+      - auth-service
+    networks:
+      - public
+      - private 
+      
+  auth-service:
+    image: openjdk:21-jdk
+    working_dir: /app
+    volumes:
+      - ./auth-service:/app
+    expose:
+      - "8081"
+    command: ./mvnw spring-boot:run
+    depends_on:
+      - db
+    env_file:
+      - ./auth-service/.env
+    networks:
+      - public
+      - private
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - private
+
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - public
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3005:3000"
+    networks:
+      - public
+
+volumes:
+  postgres_data:
+  
+networks:
+  public:
+    driver: bridge
+  private:
+    driver: bridge

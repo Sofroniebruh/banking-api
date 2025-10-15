@@ -305,6 +305,105 @@ public class UserServiceUnitTest {
         assertEquals(0.0, meterRegistry.counter("auth-service.internal-error.total").count());
     }
 
+    @Test
+    @DisplayName("Should throw an InvalidTokenException if the token is null for refresh")
+    void shouldThrowInvalidTokenExceptionIfTokenIsNullRefresh() {
+        assertThrows(InvalidTokenException.class, () -> userService.refresh(null));
+
+        verify(jwtService, never()).extractUserEmail(any());
+        verify(userDetailsService, never()).loadUserByUsername(any());
+
+        assertEquals(1.0, meterRegistry.counter("tokens.error.total").count());
+    }
+
+    @Test
+    @DisplayName("Should throw an InvalidTokenException if the token is invalid for refresh")
+    void shouldThrowInvalidTokenExceptionIfTokenIsInvalidDuringRefreshRefresh() {
+        String token = "testToken";
+        String email = "test@gmail.com";
+
+        when(jwtService.extractUserEmail(token)).thenReturn(email);
+        when(userDetailsService.loadUserByUsername(email)).thenReturn(userDetails);
+        when(jwtService.isTokenValid(token, userDetails)).thenReturn(false);
+
+        assertThrows(InvalidTokenException.class, () -> userService.refresh(token));
+
+        verify(jwtService, times(1)).extractUserEmail(token);
+        verify(userDetailsService, times(1)).loadUserByUsername(email);
+        verify(jwtService, times(1)).isTokenValid(token, userDetails);
+        verify(jwtService, never()).extractUserId(token);
+
+        assertEquals(1.0, meterRegistry.counter("tokens.error.total").count());
+    }
+
+    @Test
+    @DisplayName("Should throw a UserException if the user was not found for refresh")
+    void shouldThrowUserExceptionIfUserIsNotFoundRefresh() {
+        String token = "testToken";
+        String email = "test@gmail.com";
+
+        when(jwtService.extractUserEmail(token)).thenReturn(email);
+        when(userDetailsService.loadUserByUsername(email)).thenReturn(userDetails);
+        when(jwtService.isTokenValid(token, userDetails)).thenReturn(true);
+        when(userRepository.findUserByEmail(email)).thenReturn(Optional.empty());
+
+        assertThrows(UserException.class, () -> userService.refresh(token));
+
+        verify(jwtService, times(1)).extractUserEmail(token);
+        verify(userDetailsService, times(1)).loadUserByUsername(email);
+        verify(jwtService, times(1)).isTokenValid(token, userDetails);
+
+        assertEquals(1.0, meterRegistry.counter("users.error.total").count());
+    }
+
+    @Test
+    @DisplayName("Should throw a UsernameNotFoundException if the userDetails user was not found for refresh")
+    void shouldThrowUserExceptionIfUserDetailsUserIsNotFoundRefresh() {
+        String token = "testToken";
+        String email = "test@gmail.com";
+
+        when(jwtService.extractUserEmail(token)).thenReturn(email);
+        when(userDetailsService.loadUserByUsername(email)).thenThrow(UsernameNotFoundException.class);
+
+        assertThrows(UsernameNotFoundException.class, () -> userService.refresh(token));
+
+        verify(jwtService, times(1)).extractUserEmail(token);
+        verify(jwtService, never()).isTokenValid(token, userDetails);
+        verify(userRepository, never()).findUserByEmail(email);
+
+        assertEquals(1.0, meterRegistry.counter("users.error.total").count());
+    }
+
+    @Test
+    @DisplayName("Should throw TokenGeneratorException for refresh if failed to generate tokens")
+    void shouldThrowExceptionIfFailsToGenerateTokens() {
+        String token = "testToken";
+        String email = "test@gmail.com";
+
+        User user = new User();
+
+        user.setRoles(List.of(Role.USER));
+        user.setEmail(email);
+        user.setId(UUID.randomUUID());
+
+        when(jwtService.extractUserEmail(token)).thenReturn(email);
+        when(jwtService.isTokenValid(token, userDetails)).thenReturn(true);
+        when(userDetailsService.loadUserByUsername(email)).thenReturn(userDetails);
+        when(userRepository.findUserByEmail(email)).thenReturn(Optional.of(user));
+        when(jwtService.generateToken(anyMap(), eq(userDetails), any(Duration.class))).thenThrow(RuntimeException.class);
+
+        assertThrows(TokenGeneratorException.class, () -> userService.refresh(token));
+
+
+        verify(jwtService, times(1)).generateToken(anyMap(), eq(userDetails), any(Duration.class));
+        verify(jwtService, times(1)).extractUserEmail(token);
+        verify(userDetailsService, times(2)).loadUserByUsername(email);
+        verify(jwtService, times(1)).isTokenValid(token, userDetails);
+
+        assertEquals(1.0, meterRegistry.counter("auth-service.internal-error.total").count());
+        assertEquals(1.0, meterRegistry.counter("tokens.error.total").count());
+    }
+
     private User createTestUser(String name, String email)
     {
         User user = new User();

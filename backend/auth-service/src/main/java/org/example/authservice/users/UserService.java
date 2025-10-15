@@ -269,7 +269,6 @@ public class UserService {
             throw new TokenGeneratorException("Failed to generate tokens: user not found");
         } catch (Exception ex) {
             logger.error("Error generating tokens: ", ex);
-            tokenErrorCounter.increment();
             internalErrorCounter.increment();
 
             throw new TokenGeneratorException("Failed to generate tokens: " + ex.getMessage());

@@ -202,6 +202,49 @@ public class UserService {
         }
     }
 
+    public UserDTO refresh(String token) {
+        try {
+            if (token == null || token.trim().isEmpty()) {
+                throw new InvalidTokenException("Invalid refresh token");
+            }
+
+            String email = jwtService.extractUserEmail(token);
+            UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+
+            if (!jwtService.isTokenValid(token, userDetails)) {
+                throw new InvalidTokenException("Refresh token is invalid or expired");
+            }
+
+            User user = userRepository.findUserByEmail(email)
+                    .orElseThrow(() -> new UserException(String.format("User with email %s not found", email)));
+            Map<String, String> tokens = generateTokens(user);
+            String accessToken = tokens.get("access_token");
+            String refreshToken = tokens.get("refresh_token");
+
+            return UserDTO.fromEntity(user, accessToken, refreshToken);
+        } catch (InvalidTokenException ex) {
+            logger.error("Token refresh failed: ", ex);
+            tokenErrorCounter.increment();
+
+            throw ex;
+        } catch (UsernameNotFoundException | UserException ex) {
+            logger.error("User not found during token refresh: ", ex);
+            userErrorCounter.increment();
+
+            throw ex;
+        } catch (TokenGeneratorException ex) {
+            logger.error("Token generation failed during refresh: ", ex);
+            tokenErrorCounter.increment();
+
+            throw ex;
+        } catch (Exception ex) {
+            logger.error("Error refreshing token: ", ex);
+            internalErrorCounter.increment();
+
+            throw new InternalErrorException("[auth-service]: Internal Server Error");
+        }
+    }
+
     private Map<String, String> generateTokens(User user) {
         try {
             Map<String, Object> claims = new HashMap<>();
@@ -230,50 +273,6 @@ public class UserService {
             internalErrorCounter.increment();
 
             throw new TokenGeneratorException("Failed to generate tokens: " + ex.getMessage());
-        }
-    }
-
-    public UserDTO refresh(String token) {
-        try {
-            if (token == null || token.trim().isEmpty()) {
-                throw new InvalidTokenException("Invalid refresh token");
-            }
-
-            UserDetails userDetails = userDetailsService.loadUserByUsername(jwtService.extractUserEmail(token));
-
-            if (!jwtService.isTokenValid(token, userDetails)) {
-                throw new InvalidTokenException("Refresh token is invalid or expired");
-            }
-
-            String email = jwtService.extractUserEmail(token);
-            User user = userRepository.findUserByEmail(email)
-                    .orElseThrow(() -> new UserException(String.format("User with email %s not found", email)));
-
-            Map<String, String> tokens = generateTokens(user);
-            String accessToken = tokens.get("access_token");
-            String refreshToken = tokens.get("refresh_token");
-
-            return UserDTO.fromEntity(user, accessToken, refreshToken);
-        } catch (InvalidTokenException ex) {
-            logger.error("Token refresh failed: ", ex);
-            tokenErrorCounter.increment();
-
-            throw ex;
-        } catch (UsernameNotFoundException | UserException ex) {
-            logger.error("User not found during token refresh: ", ex);
-            userErrorCounter.increment();
-
-            throw ex;
-        } catch (TokenGeneratorException ex) {
-            logger.error("Token generation failed during refresh: ", ex);
-            tokenErrorCounter.increment();
-
-            throw ex;
-        } catch (Exception ex) {
-            logger.error("Error refreshing token: ", ex);
-            internalErrorCounter.increment();
-
-            throw new InternalErrorException("[auth-service]: Internal Server Error");
         }
     }
 }

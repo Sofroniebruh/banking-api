@@ -3,6 +3,7 @@ package org.example.authservice.services;
 import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+import io.jsonwebtoken.ExpiredJwtException;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.example.authservice.jwt_validators.JwtService;
@@ -10,11 +11,13 @@ import org.example.authservice.users.Role;
 import org.example.authservice.users.User;
 import org.example.authservice.users.UserRepository;
 import org.example.authservice.users.UserService;
+import org.example.authservice.users.exceptions.InvalidTokenException;
 import org.example.authservice.users.exceptions.TokenGeneratorException;
 import org.example.authservice.users.exceptions.UserException;
 import org.example.authservice.users.records.AuthUserDTO;
 import org.example.authservice.users.records.CreateUserDTO;
 import org.example.authservice.users.records.UserDTO;
+import org.example.authservice.users.records.UserTokenInfoDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -195,6 +198,111 @@ public class UserServiceUnitTest {
         verify(authenticationManager, never()).authenticate(any(UsernamePasswordAuthenticationToken.class));
 
         assertEquals(1.0, meterRegistry.counter("users.error.total").count());
+    }
+
+    @Test
+    @DisplayName("Should successfully validate received tokens")
+    void shouldSuccessfullyValidateReceivedTokens() {
+        String token = "testToken";
+        UserTokenInfoDTO userTokenInfoDTO = new UserTokenInfoDTO("qwerty@gmail.com", UUID.nameUUIDFromBytes("123qwe".getBytes()), List.of(Role.USER));
+
+        when(jwtService.extractUserEmail(token)).thenReturn("qwerty@gmail.com");
+        when(userDetailsService.loadUserByUsername("qwerty@gmail.com")).thenReturn(userDetails);
+        when(jwtService.isTokenValid(token, userDetails)).thenReturn(true);
+        when(jwtService.extractUserId(token)).thenReturn(UUID.nameUUIDFromBytes("123qwe".getBytes()));
+        when(jwtService.extractUserRoles(token)).thenReturn(List.of("USER"));
+
+        assertEquals(userTokenInfoDTO, userService.validateToken(token));
+
+        assertEquals(0.0, meterRegistry.counter("tokens.error.total").count());
+        assertEquals(0.0, meterRegistry.counter("users.error.total").count());
+    }
+
+    @Test
+    @DisplayName("Should throw InvalidTokenException if email is null")
+    void shouldThrowInvalidTokenExceptionIfEmailIsNull() {
+        String token = "testToken";
+
+        when(jwtService.extractUserEmail(token)).thenReturn(null);
+
+        assertThrows(InvalidTokenException.class, () -> userService.validateToken(token));
+
+        verify(userDetailsService, never()).loadUserByUsername(anyString());
+
+        assertEquals(1.0, meterRegistry.counter("tokens.error.total").count());
+    }
+
+    @Test
+    @DisplayName("Should throw InvalidTokenException if token is invalid")
+    void shouldThrowInvalidTokenExceptionIfTokenIsInvalid() {
+        String token = "testToken";
+        String email = "test@gmail.com";
+
+        when(jwtService.extractUserEmail(token)).thenReturn(email);
+        when(userDetailsService.loadUserByUsername(email)).thenReturn(userDetails);
+        when(jwtService.isTokenValid(token, userDetails)).thenReturn(false);
+
+        assertThrows(InvalidTokenException.class, () -> userService.validateToken(token));
+
+        verify(userDetailsService, times(1)).loadUserByUsername(email);
+        verify(jwtService, times(1)).extractUserEmail(token);
+        verify(jwtService, times(1)).isTokenValid(token, userDetails);
+        verify(jwtService, never()).extractUserId(token);
+
+        assertEquals(1.0, meterRegistry.counter("tokens.error.total").count());
+    }
+
+    @Test
+    @DisplayName("Should throw ExpiredJwtException if the token is expired")
+    void shouldThrowExpiredJwtExceptionIfTokenIsExpired() {
+        String token = "testToken";
+        String email = "test@gmail.com";
+
+        when(jwtService.extractUserEmail(token)).thenReturn(email);
+        when(userDetailsService.loadUserByUsername(email)).thenReturn(userDetails);
+        when(jwtService.isTokenValid(token, userDetails)).thenThrow(ExpiredJwtException.class);
+
+        assertThrows(ExpiredJwtException.class, () -> userService.validateToken(token));
+
+        verify(jwtService, times(1)).extractUserEmail(token);
+        verify(userDetailsService, times(1)).loadUserByUsername(email);
+        verify(jwtService, times(1)).isTokenValid(token, userDetails);
+        verify(jwtService, never()).extractUserId(token);
+
+        assertEquals(1.0, meterRegistry.counter("tokens.error.total").count());
+    }
+
+    @Test
+    @DisplayName("Should correctly refresh both tokens")
+    void shouldCorrectlyRefreshBothTokens() {
+        String token = "testToken";
+        String email = "test@gmail.com";
+        User user = new User();
+
+        user.setRoles(List.of(Role.USER));
+        user.setEmail(email);
+        user.setId(UUID.randomUUID());
+
+        UserDTO dto = UserDTO.fromEntity(user, "accessToken", "refreshToken");
+
+        when(jwtService.extractUserEmail(token)).thenReturn(email);
+        when(userDetailsService.loadUserByUsername(email)).thenReturn(userDetails);
+        when(jwtService.isTokenValid(token, userDetails)).thenReturn(true);
+        when(userRepository.findUserByEmail(email)).thenReturn(Optional.of(user));
+        when(jwtService.generateToken(anyMap(), eq(userDetails), any(Duration.class)))
+                .thenReturn("accessToken")
+                .thenReturn("refreshToken");
+
+        assertEquals(dto, userService.refresh(token));
+
+        verify(jwtService, times(1)).extractUserEmail(token);
+        verify(userDetailsService, times(2)).loadUserByUsername(email);
+        verify(jwtService, times(1)).isTokenValid(token, userDetails);
+        verify(jwtService, times(2)).generateToken(anyMap(), eq(userDetails), any(Duration.class));
+
+        assertEquals(0.0, meterRegistry.counter("tokens.error.total").count());
+        assertEquals(0.0, meterRegistry.counter("users.error.total").count());
+        assertEquals(0.0, meterRegistry.counter("auth-service.internal-error.total").count());
     }
 
     private User createTestUser(String name, String email)

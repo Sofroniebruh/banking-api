@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -19,6 +20,7 @@ import java.util.UUID;
 
 @AllArgsConstructor
 @NoArgsConstructor
+@DynamicUpdate
 @Data
 @Builder
 @Entity
@@ -29,6 +31,7 @@ public class User implements UserDetails {
     private UUID id;
     private String name;
     @Email
+    @Column(unique = true)
     private String email;
     private String password;
     @ElementCollection(targetClass = Role.class)

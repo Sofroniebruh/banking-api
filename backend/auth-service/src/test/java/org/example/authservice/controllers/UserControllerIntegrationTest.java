@@ -196,6 +196,170 @@ public class UserControllerIntegrationTest {
                 .andReturn();
     }
 
+    @Test
+    @DisplayName("Should return 401 status if user email was not found")
+    void shouldReturn401StatusIfUserEmailIsNotFound() throws Exception {
+        AuthUserDTO userDTO = new AuthUserDTO("newEmail@gmail.com", "test@gmail.com");
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(userDTO))
+                        .header("X-Internal-Request", INTERNAL_SERVICE_SECRET))
+
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").exists())
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andReturn();
+    }
+
+    @Test
+    @DisplayName("Should validate token and return user info")
+    void shouldValidateTokenAndReturnUserInfo() throws Exception {
+        User user = userSetup();
+        userRepository.save(user);
+
+        AuthUserDTO loginDTO = new AuthUserDTO("test@gmail.com", "test");
+        String loginResponse = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(loginDTO))
+                        .header("X-Internal-Request", INTERNAL_SERVICE_SECRET))
+                .andReturn().getResponse().getContentAsString();
+
+        Map<String, Object> responseMap = objectMapper.readValue(loginResponse, Map.class);
+        String accessToken = (String) responseMap.get("accessToken");
+
+        mockMvc.perform(post("/api/v1/auth/validate")
+                        .cookie(new jakarta.servlet.http.Cookie("access_token", accessToken))
+                        .header("X-Internal-Request", INTERNAL_SERVICE_SECRET))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.email").value("test@gmail.com"))
+                .andExpect(jsonPath("$.roles").exists());
+    }
+
+    @Test
+    @DisplayName("Should return 400 when access token cookie is missing")
+    void shouldReturn400WhenAccessTokenCookieIsMissing() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/validate")
+                        .header("X-Internal-Request", INTERNAL_SERVICE_SECRET))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Should return 401 when access token is invalid")
+    void shouldReturn401WhenAccessTokenIsInvalid() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/validate")
+                        .cookie(new jakarta.servlet.http.Cookie("access_token", "invalid-token"))
+                        .header("X-Internal-Request", INTERNAL_SERVICE_SECRET))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").exists())
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    @DisplayName("Should refresh token and return new user info")
+    void shouldRefreshTokenAndReturnNewUserInfo() throws Exception {
+        User user = userSetup();
+        userRepository.save(user);
+
+        AuthUserDTO loginDTO = new AuthUserDTO("test@gmail.com", "test");
+        String loginResponse = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(loginDTO))
+                        .header("X-Internal-Request", INTERNAL_SERVICE_SECRET))
+                .andReturn().getResponse().getContentAsString();
+
+        Map<String, Object> responseMap = objectMapper.readValue(loginResponse, Map.class);
+        String refreshToken = (String) responseMap.get("refreshToken");
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(new jakarta.servlet.http.Cookie("refresh_token", refreshToken))
+                        .header("X-Internal-Request", INTERNAL_SERVICE_SECRET))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.email").value("test@gmail.com"))
+                .andExpect(jsonPath("$.name").value("test"))
+                .andExpect(jsonPath("$.accessToken").exists())
+                .andExpect(jsonPath("$.refreshToken").exists());
+    }
+
+    @Test
+    @DisplayName("Should return 400 when refresh token cookie is missing")
+    void shouldReturn400WhenRefreshTokenCookieIsMissing() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .header("X-Internal-Request", INTERNAL_SERVICE_SECRET))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Should return 401 when refresh token is invalid")
+    void shouldReturn401WhenRefreshTokenIsInvalid() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(new jakarta.servlet.http.Cookie("refresh_token", "invalid-refresh-token"))
+                        .header("X-Internal-Request", INTERNAL_SERVICE_SECRET))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").exists())
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    @DisplayName("Should return 403 when internal service header is missing for registration")
+    void shouldReturn403WhenInternalServiceHeaderIsMissingForRegistration() throws Exception {
+        CreateUserDTO userDTO = new CreateUserDTO("testName", "test@gmail.com", "qwerty123");
+
+        mockMvc.perform(post("/api/v1/auth/registration")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(userDTO)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("Should return 403 when internal service header is missing for login")
+    void shouldReturn403WhenInternalServiceHeaderIsMissingForLogin() throws Exception {
+        AuthUserDTO userDTO = new AuthUserDTO("test@gmail.com", "test");
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(userDTO)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("Should return 403 when internal service header is invalid")
+    void shouldReturn403WhenInternalServiceHeaderIsInvalid() throws Exception {
+        CreateUserDTO userDTO = new CreateUserDTO("testName", "test@gmail.com", "qwerty123");
+
+        mockMvc.perform(post("/api/v1/auth/registration")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(userDTO))
+                        .header("X-Internal-Request", "invalid-secret"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("Should return 500 for malformed JSON in registration")
+    void shouldReturn400ForMalformedJsonInRegistration() throws Exception {
+        String malformedJson = "{\"name\": \"test\", \"email\": \"test@test.com\", \"password\":}";
+
+        mockMvc.perform(post("/api/v1/auth/registration")
+                        .contentType("application/json")
+                        .content(malformedJson)
+                        .header("X-Internal-Request", INTERNAL_SERVICE_SECRET))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    @DisplayName("Should return 415 for unsupported media type")
+    void shouldReturn415ForUnsupportedMediaType() throws Exception {
+        CreateUserDTO userDTO = new CreateUserDTO("testName", "test@gmail.com", "qwerty123");
+
+        mockMvc.perform(post("/api/v1/auth/registration")
+                        .contentType("text/plain")
+                        .content(objectMapper.writeValueAsString(userDTO))
+                        .header("X-Internal-Request", INTERNAL_SERVICE_SECRET))
+                .andExpect(status().isUnsupportedMediaType());
+    }
+
     private User userSetup() {
         User user = new User();
 

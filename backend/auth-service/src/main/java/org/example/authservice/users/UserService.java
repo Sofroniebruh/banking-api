@@ -1,6 +1,7 @@
 package org.example.authservice.users;
 
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.example.authservice.jwt_validators.JwtService;
@@ -188,13 +189,17 @@ public class UserService {
             userErrorCounter.increment();
 
             throw ex;
-        }
-        catch (ExpiredJwtException ex) {
+        } catch (ExpiredJwtException ex) {
             logger.error("Token expired during token validation: ", ex);
             tokenErrorCounter.increment();
 
             throw ex;
-        }catch (Exception ex) {
+        } catch (MalformedJwtException ex) {
+            logger.error("Malformed token during token validation: ", ex);
+            tokenErrorCounter.increment();
+
+            throw ex;
+        } catch (Exception ex) {
             logger.error("Error validating token: ", ex);
             internalErrorCounter.increment();
 
@@ -222,7 +227,7 @@ public class UserService {
             String refreshToken = tokens.get("refresh_token");
 
             return UserDTO.fromEntity(user, accessToken, refreshToken);
-        } catch (InvalidTokenException ex) {
+        } catch (InvalidTokenException | MalformedJwtException ex) {
             logger.error("Token refresh failed: ", ex);
             tokenErrorCounter.increment();
 

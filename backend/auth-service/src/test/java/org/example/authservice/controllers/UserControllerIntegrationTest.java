@@ -31,10 +31,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest(
-        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        classes = org.example.authservice.TestConfiguration.class
-)
+@SpringBootTest
 @Testcontainers
 @ActiveProfiles("test")
 @AutoConfigureMockMvc

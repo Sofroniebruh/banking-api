@@ -7,6 +7,7 @@ import static org.mockito.Mockito.*;
 import io.jsonwebtoken.Header;
 import io.jsonwebtoken.impl.DefaultClaims;
 import io.jsonwebtoken.impl.DefaultHeader;
+import org.example.authservice.config.ErrorResponse;
 import org.example.authservice.config.GlobalExceptionHandler;
 import org.example.authservice.users.exceptions.InvalidTokenException;
 import org.example.authservice.users.exceptions.TokenGeneratorException;
@@ -17,8 +18,6 @@ import org.mockito.Mock;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -33,78 +32,90 @@ public class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should return proper status code and a message for UserException")
     void handleUserException() {
-        String errorBody = "User exception occurred";
-        UserException ex = new UserException(errorBody);
+        String errorMessage = "User exception occurred";
+        UserException ex = new UserException(errorMessage);
         ResponseEntity<?> response = globalExceptionHandler.handleUserException(ex);
 
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
-        assertEquals(errorBody, response.getBody());
+        ErrorResponse errorResponse = (ErrorResponse) response.getBody();
+        assertEquals(errorMessage, errorResponse.getError());
+        assertNotNull(errorResponse.getTimestamp());
     }
 
     @Test
     @DisplayName("Should return proper status code and a message for ExpiredJwtException")
     void handleExpiredJwtException() {
-        String errorBody = "Expired jwt exception occurred";
+        String errorMessage = "Expired jwt exception occurred";
         Header header = new DefaultHeader();
         Claims claims = new DefaultClaims();
-        ExpiredJwtException ex = new ExpiredJwtException(header, claims, errorBody);
+        ExpiredJwtException ex = new ExpiredJwtException(header, claims, errorMessage);
         ResponseEntity<?> response = globalExceptionHandler.handleExpiredJwtException(ex);
 
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
-        assertEquals(errorBody, response.getBody());
+        ErrorResponse errorResponse = (ErrorResponse) response.getBody();
+        assertEquals(errorMessage, errorResponse.getError());
+        assertNotNull(errorResponse.getTimestamp());
     }
 
     @Test
     @DisplayName("Should return proper status code and a message for TokenGeneratorException")
     void handleTokenGeneratorException() {
-        String errorBody = "Token generator exception occurred";
-        TokenGeneratorException ex = new TokenGeneratorException(errorBody);
+        String errorMessage = "Token generator exception occurred";
+        TokenGeneratorException ex = new TokenGeneratorException(errorMessage);
         ResponseEntity<?> response = globalExceptionHandler.handleTokenException(ex);
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-        assertEquals(errorBody, response.getBody());
+        ErrorResponse errorResponse = (ErrorResponse) response.getBody();
+        assertEquals(errorMessage, errorResponse.getError());
+        assertNotNull(errorResponse.getTimestamp());
     }
 
     @Test
     @DisplayName("Should return proper status code and a message for UsernameNotFoundException")
     void handleUsernameNotFoundException() {
-        UsernameNotFoundException ex = new UsernameNotFoundException("");
-        ResponseEntity<?> response = globalExceptionHandler.handleUsernameNotFoundException(ex);
+        ResponseEntity<?> response = globalExceptionHandler.handleUsernameNotFoundException();
 
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
-        assertEquals("Invalid email or password", response.getBody());
+        ErrorResponse errorResponse = (ErrorResponse) response.getBody();
+        assertEquals("Invalid email or password", errorResponse.getError());
+        assertNotNull(errorResponse.getTimestamp());
     }
 
     @Test
     @DisplayName("Should return proper status code and a message for InvalidTokenException")
     void handleInvalidTokenException() {
-        String errorBody = "Invalid token";
-        InvalidTokenException ex = new InvalidTokenException(errorBody);
+        String errorMessage = "Invalid token";
+        InvalidTokenException ex = new InvalidTokenException(errorMessage);
         ResponseEntity<?> response = globalExceptionHandler.handleInvalidTokenException(ex);
 
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
-        assertEquals(errorBody, response.getBody());
+        ErrorResponse errorResponse = (ErrorResponse) response.getBody();
+        assertEquals(errorMessage, errorResponse.getError());
+        assertNotNull(errorResponse.getTimestamp());
     }
 
     @Test
     @DisplayName("Should return proper status code and a message for BadCredentialsException")
     void handleBadCredentialsException() {
-        BadCredentialsException ex = new BadCredentialsException("");
-        ResponseEntity<?> response = globalExceptionHandler.handleBadCredentialsException(ex);
+        ResponseEntity<?> response = globalExceptionHandler.handleBadCredentialsException();
 
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
-        assertEquals("Invalid email or password", response.getBody());
+        ErrorResponse errorResponse = (ErrorResponse) response.getBody();
+        assertEquals("Invalid email or password", errorResponse.getError());
+        assertNotNull(errorResponse.getTimestamp());
     }
 
     @Test
     @DisplayName("Should return proper status code and a message for RuntimeException")
     void handleRuntimeException() {
-        String errorBody = "Runtime exception occurred";
-        RuntimeException ex = new RuntimeException(errorBody);
+        String errorMessage = "Runtime exception occurred";
+        RuntimeException ex = new RuntimeException(errorMessage);
         ResponseEntity<?> response = globalExceptionHandler.handleRuntimeException(ex);
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-        assertEquals(errorBody, response.getBody());
+        ErrorResponse errorResponse = (ErrorResponse) response.getBody();
+        assertEquals(errorMessage, errorResponse.getError());
+        assertNotNull(errorResponse.getTimestamp());
     }
 
     @Test

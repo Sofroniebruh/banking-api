@@ -21,49 +21,62 @@ public class GlobalExceptionHandler {
             UserException.class,
     })
     public ResponseEntity<?> handleUserException(UserException e) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+        ErrorResponse errorResponse = new ErrorResponse(e.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
     }
 
     @ExceptionHandler({
             ExpiredJwtException.class,
     })
     public ResponseEntity<?> handleExpiredJwtException(ExpiredJwtException e) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+        ErrorResponse errorResponse = new ErrorResponse(e.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
     }
 
     @ExceptionHandler({
             TokenGeneratorException.class,
     })
     public ResponseEntity<?> handleTokenException(TokenGeneratorException e) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        ErrorResponse errorResponse = new ErrorResponse(e.getMessage());
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }
 
     @ExceptionHandler({
             UsernameNotFoundException.class,
     })
-    public ResponseEntity<?> handleUsernameNotFoundException(UsernameNotFoundException e) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid email or password");
+    public ResponseEntity<?> handleUsernameNotFoundException() {
+        ErrorResponse errorResponse = new ErrorResponse("Invalid email or password");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
     }
 
     @ExceptionHandler({
             InvalidTokenException.class,
     })
     public ResponseEntity<?> handleInvalidTokenException(InvalidTokenException e) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+        ErrorResponse errorResponse = new ErrorResponse(e.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
     }
 
     @ExceptionHandler({
             BadCredentialsException.class,
     })
-    public ResponseEntity<?> handleBadCredentialsException(BadCredentialsException e) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid email or password");
+    public ResponseEntity<?> handleBadCredentialsException() {
+        ErrorResponse errorResponse = new ErrorResponse("Invalid email or password");
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
     }
 
     @ExceptionHandler({
             RuntimeException.class,
     })
     public ResponseEntity<?> handleRuntimeException(RuntimeException e) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        ErrorResponse errorResponse = new ErrorResponse(e.getMessage());
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }
 
     @ExceptionHandler({

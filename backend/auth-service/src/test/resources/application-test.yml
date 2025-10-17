@@ -1,3 +1,8 @@
+INTERNAL_SERVICE_SECRET: test-secret
+JWT_SECRET: 9vW3zYXvO4xQZbsl0qXOfyYqC1lYa6CvQq1p7dRqH+E=
+ACCESS_TOKEN_TTL: 24m
+REFRESH_TOKEN_TTL: 2d
+
 logging:
   level:
     org:

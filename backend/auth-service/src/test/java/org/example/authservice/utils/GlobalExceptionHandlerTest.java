@@ -5,6 +5,7 @@ import io.jsonwebtoken.ExpiredJwtException;
 import static org.mockito.Mockito.*;
 
 import io.jsonwebtoken.Header;
+import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.impl.DefaultClaims;
 import io.jsonwebtoken.impl.DefaultHeader;
 import org.example.authservice.config.ErrorResponse;
@@ -138,5 +139,18 @@ public class GlobalExceptionHandlerTest {
         assertEquals(1, ex.getBindingResult().getErrorCount());
         assertEquals("email", ex.getBindingResult().getFieldErrors().get(0).getField());
         assertEquals("must not be empty", ex.getBindingResult().getFieldErrors().get(0).getDefaultMessage());
+    }
+
+    @Test
+    @DisplayName("Should return proper status code and a message for MalformedJwtException")
+    void handleMalformedJwtException() {
+        String errorMessage = "Malformed token";
+        MalformedJwtException ex = new MalformedJwtException(errorMessage);
+
+        ResponseEntity<?> response = globalExceptionHandler.handleMalformedJwtException(ex);
+        ErrorResponse errorResponse = (ErrorResponse) response.getBody();
+
+        assertEquals(errorMessage, errorResponse.getError());
+        assertNotNull(errorResponse.getTimestamp());
     }
 }

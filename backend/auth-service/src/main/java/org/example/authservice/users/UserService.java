@@ -4,6 +4,8 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import org.example.authservice.jwt_validators.JwtService;
 import org.example.authservice.users.exceptions.InternalErrorException;
 import org.example.authservice.users.exceptions.InvalidTokenException;
@@ -250,6 +252,14 @@ public class UserService {
         }
     }
 
+    public void logout(HttpServletResponse response) {
+        Cookie accessCookie = createCookie("access_token", null, 0, true, "/", true);
+        Cookie refreshCookie = createCookie("refresh_token", null, 0, true, "/", true);
+
+        response.addCookie(accessCookie);
+        response.addCookie(refreshCookie);
+    }
+
     private Map<String, String> generateTokens(User user) {
         try {
             Map<String, Object> claims = new HashMap<>();
@@ -278,5 +288,15 @@ public class UserService {
 
             throw new TokenGeneratorException("Failed to generate tokens: " + ex.getMessage());
         }
+    }
+
+    private Cookie createCookie(String name, String value, int maxAge, boolean httpOnly, String path, boolean secure) {
+        Cookie cookie = new Cookie(name, value);
+        cookie.setPath(path);
+        cookie.setMaxAge(maxAge);
+        cookie.setHttpOnly(httpOnly);
+        cookie.setSecure(secure);
+
+        return cookie;
     }
 }

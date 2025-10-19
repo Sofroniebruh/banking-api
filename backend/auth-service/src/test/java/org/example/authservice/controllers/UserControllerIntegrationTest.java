@@ -1,6 +1,7 @@
 package org.example.authservice.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.Cookie;
 import org.example.authservice.users.Role;
 import org.example.authservice.users.User;
 import org.example.authservice.users.UserRepository;
@@ -355,6 +356,27 @@ public class UserControllerIntegrationTest {
                         .content(objectMapper.writeValueAsString(userDTO))
                         .header("X-Internal-Request", INTERNAL_SERVICE_SECRET))
                 .andExpect(status().isUnsupportedMediaType());
+    }
+
+    @Test
+    @DisplayName("Should invalidate cookies when requested logout")
+    void shouldInvalidateCookies() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .contentType("text/plain")
+                        .header("X-Internal-Request", INTERNAL_SERVICE_SECRET))
+                .andExpect(status().isOk())
+                .andExpect(cookie().exists("access_token"))
+                .andExpect(result -> {
+                    Cookie cookie = result.getResponse().getCookie("access_token");
+                    assertNotNull(cookie);
+                    assertNull(cookie.getValue());
+                })
+                .andExpect(cookie().exists("refresh_token"))
+                .andExpect(result -> {
+                    Cookie cookie = result.getResponse().getCookie("refresh_token");
+                    assertNotNull(cookie);
+                    assertNull(cookie.getValue());
+                });
     }
 
     private User userSetup() {

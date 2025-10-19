@@ -1,5 +1,6 @@
 package org.example.authservice.users;
 
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.example.authservice.users.records.AuthUserDTO;
@@ -9,6 +10,9 @@ import org.example.authservice.users.records.UserTokenInfoDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.Instant;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -36,5 +40,15 @@ public class UserController {
     public ResponseEntity<UserDTO> refreshToken(
             @CookieValue(value = "refresh_token") String refreshToken) {
         return ResponseEntity.ok(userService.refresh(refreshToken));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(HttpServletResponse response) {
+        userService.logout(response);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Logged out successfully",
+                "timestamp", Instant.now()
+        ));
     }
 }

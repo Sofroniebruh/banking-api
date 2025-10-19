@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import org.example.authservice.jwt_validators.JwtService;
 import org.example.authservice.users.Role;
 import org.example.authservice.users.User;
@@ -22,6 +24,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -402,6 +405,39 @@ public class UserServiceUnitTest {
 
         assertEquals(1.0, meterRegistry.counter("auth-service.internal-error.total").count());
         assertEquals(1.0, meterRegistry.counter("tokens.error.total").count());
+    }
+
+    @Test
+    @DisplayName("Should invalidate cookies when logout")
+    void shouldInvalidateCookiesWhenLogout() {
+        HttpServletResponse response = mock(HttpServletResponse.class);
+        ArgumentCaptor<Cookie> cookieCaptor = ArgumentCaptor.forClass(Cookie.class);
+
+        userService.logout(response);
+
+        verify(response, times(2)).addCookie(cookieCaptor.capture());
+
+        List<Cookie> cookies = cookieCaptor.getAllValues();
+
+        assertEquals(2, cookies.size());
+
+        Cookie accessCookie = cookies.get(0);
+
+        assertEquals("access_token", accessCookie.getName());
+        assertNull(accessCookie.getValue());
+        assertEquals(0, accessCookie.getMaxAge());
+        assertEquals("/", accessCookie.getPath());
+        assertTrue(accessCookie.isHttpOnly());
+        assertTrue(accessCookie.getSecure());
+
+        Cookie refreshCookie = cookies.get(1);
+
+        assertEquals("refresh_token", refreshCookie.getName());
+        assertNull(refreshCookie.getValue());
+        assertEquals(0, refreshCookie.getMaxAge());
+        assertEquals("/", refreshCookie.getPath());
+        assertTrue(refreshCookie.isHttpOnly());
+        assertTrue(refreshCookie.getSecure());
     }
 
     private User createTestUser(String name, String email)

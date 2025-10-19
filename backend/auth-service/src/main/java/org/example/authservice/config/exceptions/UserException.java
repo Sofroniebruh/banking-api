@@ -1,4 +1,4 @@
-package org.example.authservice.users.exceptions;
+package org.example.authservice.config.exceptions;
 
 public class UserException extends RuntimeException {
     public UserException(String message) {

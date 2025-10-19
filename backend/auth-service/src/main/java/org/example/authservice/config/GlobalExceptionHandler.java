@@ -2,9 +2,9 @@ package org.example.authservice.config;
 
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
-import org.example.authservice.users.exceptions.InvalidTokenException;
-import org.example.authservice.users.exceptions.TokenGeneratorException;
-import org.example.authservice.users.exceptions.UserException;
+import org.example.authservice.config.exceptions.InvalidTokenException;
+import org.example.authservice.config.exceptions.TokenGeneratorException;
+import org.example.authservice.config.exceptions.UserException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;

@@ -1,4 +1,4 @@
-package org.example.authservice.users.exceptions;
+package org.example.authservice.config.exceptions;
 
 public class TokenGeneratorException extends RuntimeException {
     public TokenGeneratorException(String message) {

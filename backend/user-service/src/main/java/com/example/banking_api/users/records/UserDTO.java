@@ -1,10 +1,8 @@
 package com.example.banking_api.users.records;
 
-import com.example.banking_api.accounts.Account;
 import com.example.banking_api.users.User;
 
 import java.time.LocalDateTime;
-import java.util.Set;
 import java.util.UUID;
 
 public record UserDTO(

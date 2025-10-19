@@ -1,23 +1,20 @@
 package com.example.banking_api.users;
 
-import com.example.banking_api.accounts.AccountService;
-import com.example.banking_api.accounts.records.AccountDTO;
-import com.example.banking_api.common.PaginatedResponse;
+import com.example.banking_api.users.records.DeletedUser;
+import com.example.banking_api.users.records.UpdateUserDTO;
 import com.example.banking_api.users.records.UserDTO;
+import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
 @RestController
-@RequiredArgsConstructor
+@AllArgsConstructor
 @RequestMapping("/api/v1/users")
 public class UserController {
-    public UserService userService;
-    public AccountService accountService;
+    private UserService userService;
 
     @GetMapping("/{id}")
     public ResponseEntity<UserDTO> getUserById(@PathVariable UUID id) {
@@ -26,14 +23,17 @@ public class UserController {
         return ResponseEntity.ok(userDTO);
     }
 
-    @GetMapping("/{id}/accounts")
-    public ResponseEntity<PaginatedResponse<AccountDTO>> getAccountsByUserId
-            (@PathVariable UUID id,
-             @RequestParam(defaultValue = "0") int page,
-             @RequestParam(defaultValue = "10") int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        PaginatedResponse<AccountDTO> accounts = accountService.getAccountsByUserId(id, pageable);
+    @PutMapping("/{id}")
+    public ResponseEntity<UserDTO> updateUser(@PathVariable UUID id, @RequestBody UpdateUserDTO userDTO) {
+        UserDTO updatedUser = userService.updateUserById(id, userDTO);
 
-        return ResponseEntity.ok(accounts);
+        return ResponseEntity.ok(updatedUser);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<DeletedUser> deleteUser(@PathVariable UUID id) {
+        DeletedUser deletedUser = userService.deleteUserById(id);
+
+        return ResponseEntity.ok(deletedUser);
     }
 }

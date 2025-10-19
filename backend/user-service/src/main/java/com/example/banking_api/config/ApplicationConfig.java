@@ -1,4 +1,4 @@
-package com.example.banking_api.common;
+package com.example.banking_api.config;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;

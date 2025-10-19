@@ -1,4 +1,4 @@
-package com.example.banking_api.common;
+package com.example.banking_api.config.responses;
 
 import java.util.List;
 

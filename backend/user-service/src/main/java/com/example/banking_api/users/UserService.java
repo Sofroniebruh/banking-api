@@ -1,15 +1,16 @@
 package com.example.banking_api.users;
 
-import com.example.banking_api.config.RabbitConfig;
+import com.example.banking_api.config.exceptions.EmailServiceException;
 import com.example.banking_api.config.exceptions.UserNotFoundException;
 import com.example.banking_api.config.exceptions.UserValidationException;
+import com.example.banking_api.emails.EmailDTO;
+import com.example.banking_api.emails.UserEmailRabbitService;
 import com.example.banking_api.users.records.DeletedUser;
 import com.example.banking_api.users.records.UpdateUserDTO;
 import com.example.banking_api.users.records.UserDTO;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import io.micrometer.core.instrument.Counter;
@@ -21,10 +22,10 @@ import java.util.UUID;
 
 @Service
 public class UserService {
-    private UserRepository userRepository;
-    private PasswordEncoder passwordEncoder;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
     private final Logger logger = LoggerFactory.getLogger(UserService.class);
-    private final RabbitTemplate rabbitTemplate;
+    private final UserEmailRabbitService userEmailRabbitService;
     //My metrics
     private final Counter userErrorCounter;
     private final Counter emailCounter;
@@ -34,11 +35,11 @@ public class UserService {
     public UserService(
             PasswordEncoder passwordEncoder,
             UserRepository userRepository,
-            RabbitTemplate rabbitTemplate,
-            MeterRegistry meterRegistry) {
+            MeterRegistry meterRegistry,
+            UserEmailRabbitService userEmailRabbitService) {
         this.passwordEncoder = passwordEncoder;
         this.userRepository = userRepository;
-        this.rabbitTemplate = rabbitTemplate;
+        this.userEmailRabbitService = userEmailRabbitService;
         this.userErrorCounter = Counter.builder("user-service.user.errors.counter")
                 .description("Error counter for user service")
                 .register(meterRegistry);
@@ -94,8 +95,6 @@ public class UserService {
         return DeletedUser.fromEntity(deletedUser);
     }
 
-
-
     @Transactional
     public UserDTO updateUserById(UUID id, UpdateUserDTO updateUserDTO) {
         validateUpdateRequest(updateUserDTO);
@@ -131,13 +130,14 @@ public class UserService {
     }
 
     public void requestEmailSending() {
-        String link = "test_link";
-
-        rabbitTemplate.convertAndSend(
-                RabbitConfig.EMAIL_EXCHANGE,
-                RabbitConfig.EMAIL_ROUTING_KEY,
-                link
-        );
+//        try {
+            EmailDTO response = userEmailRabbitService.sendEmailAndReceive();
+            System.out.println(response.toString());
+//        } catch (EmailServiceException e) {
+//            logger.error("Error retrieving response: {}", e.getMessage());
+//
+//            throw e;
+//        }
     }
 
     private boolean hasValue(String str) {

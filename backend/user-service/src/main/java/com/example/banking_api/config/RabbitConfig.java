@@ -23,13 +23,13 @@ public class RabbitConfig {
     public static final String EMAIL_QUEUE = "email.queue";
     public static final String EMAIL_ROUTING_KEY = "email.routing.key";
     private final Logger logger = LoggerFactory.getLogger(RabbitConfig.class);
-    private final Counter emailCounter;
+    private final Counter emailErrorCounter;
 
     public RabbitConfig(
             @Value("${RABBIT_USERNAME}") String FACTORY_USERNAME,
             @Value("${RABBIT_PASSWORD}") String FACTORY_PASSWORD,
             MeterRegistry meterRegistry) {
-        this.emailCounter = Counter.builder("errors.email.rabbit")
+        this.emailErrorCounter = Counter.builder("errors.email.rabbit")
                 .description("Errors while sending rabbit messages to send an email")
                 .register(meterRegistry);
         this.FACTORY_USERNAME = FACTORY_USERNAME;
@@ -51,13 +51,20 @@ public class RabbitConfig {
         RabbitTemplate template = new RabbitTemplate(connectionFactory);
         template.setMandatory(true);
         template.setMessageConverter(new Jackson2JsonMessageConverter());
-
+        
+        template.setReplyTimeout(10000);
+        
         template.setConfirmCallback(((correlationData, ack, cause) -> {
             if (ack) {
                 logger.info("Confirmed by broker: {}", correlationData);
             } else {
-                logger.error("Message with id: {} rejected by broker: {}", correlationData.getId(), cause);
-                emailCounter.increment();
+                if (correlationData != null) {
+                    logger.error("Message with id: {} rejected by broker: {}", correlationData.getId(), cause);
+                } else {
+                    logger.error("Message rejected by broker: {}", cause);
+                }
+
+                emailErrorCounter.increment();
             }
         }));
 

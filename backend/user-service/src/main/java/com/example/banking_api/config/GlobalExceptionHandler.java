@@ -1,5 +1,6 @@
 package com.example.banking_api.config;
 
+import com.example.banking_api.config.exceptions.EmailServiceException;
 import com.example.banking_api.config.exceptions.UserValidationException;
 import com.example.banking_api.config.responses.ErrorResponse;
 import com.example.banking_api.config.exceptions.UserNotFoundException;
@@ -28,5 +29,12 @@ public class GlobalExceptionHandler {
         errors.put("errors", ex.getFieldErrors());
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
+    }
+
+    @ExceptionHandler(EmailServiceException.class)
+    public ResponseEntity<?> handleEmailServiceException(EmailServiceException ex) {
+        ErrorResponse errorResponse = ErrorResponse.from(ex.getMessage(), Instant.now());
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }
 }

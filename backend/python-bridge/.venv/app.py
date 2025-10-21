@@ -33,14 +33,14 @@ def main():
 
             status_code = data.get('status_code')
 
-            if status_code != 200 or status_code != 201:
+            if status_code not in [200, 201]:
                 raise Exception(data.get("error"))
 
-            data_body = data.get('body')
+            data_body = data.get('message')
 
             response_body = json.dumps({
                 "success": True,
-                "status_code": status_code,
+                "statusCode": status_code,
                 "data": data_body,
             })
         except Exception as e:
@@ -50,6 +50,8 @@ def main():
             })
 
             print("Error body: ", response_body)
+
+        print("Response body: ", response_body)
 
         if reply_to and correlation_id:
             ch.basic_publish(

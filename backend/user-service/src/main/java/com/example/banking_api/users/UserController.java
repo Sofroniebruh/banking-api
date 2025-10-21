@@ -1,9 +1,7 @@
 package com.example.banking_api.users;
 
-import com.example.banking_api.users.records.DeletedUser;
-import com.example.banking_api.users.records.UpdateUserDTO;
-import com.example.banking_api.users.records.UserDTO;
-import com.example.banking_api.users.records.UserEmailDTO;
+import com.example.banking_api.users.records.*;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -40,12 +38,14 @@ public class UserController {
         return userService.requestEmailSending(userEmailDTO.email().trim());
     }
 
-//    @PutMapping("/password-reset")
-//    public ResponseEntity<UserDTO> passwordUpdate(
-//            @RequestBody UpdateUserDTO userDTO,
-//            @RequestParam String token) {
-//
-//    }
+    @PutMapping("/password-reset")
+    public ResponseEntity<UserDTO> passwordUpdate(
+            @Valid @RequestBody ResetPasswordDTO userDTO,
+            @RequestParam String token) {
+        UserDTO updatedUser = userService.updatePassword(userDTO, token);
+
+        return ResponseEntity.ok().body(updatedUser);
+    }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<DeletedUser> deleteUser(@PathVariable UUID id) {

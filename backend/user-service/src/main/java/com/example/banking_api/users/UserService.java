@@ -1,13 +1,16 @@
 package com.example.banking_api.users;
 
+import com.example.banking_api.config.exceptions.TokenValidationException;
 import com.example.banking_api.config.exceptions.UserNotFoundException;
 import com.example.banking_api.config.exceptions.UserValidationException;
 import com.example.banking_api.emails.EmailResponseDTO;
 import com.example.banking_api.emails.UserEmailRabbitService;
 import com.example.banking_api.jwts.ResetTokenActions;
 import com.example.banking_api.users.records.DeletedUser;
+import com.example.banking_api.users.records.ResetPasswordDTO;
 import com.example.banking_api.users.records.UpdateUserDTO;
 import com.example.banking_api.users.records.UserDTO;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -158,9 +161,33 @@ public class UserService {
         return ResponseEntity.status(response.getStatusCode()).body(response.getError());
     }
 
-//    public ResponseEntity<UserDTO> updatePassword(UpdateUserDTO updateUserDTO, String token) {
-//
-//    }
+    @Transactional
+    public UserDTO updatePassword(ResetPasswordDTO updateUserDTO, String token) {
+        try {
+            if (!resetTokenActions.isTokenValid(token, updateUserDTO.email())) {
+                throw new TokenValidationException("Invalid token");
+            }
+
+            String email = resetTokenActions.getEmailFromToken(token);
+
+            User user = userRepository.findUserByEmail(email)
+                    .orElseThrow(() -> new UserNotFoundException(String.format("User with email %s not found", email)));
+
+            user.setPassword(passwordEncoder.encode(updateUserDTO.password()));
+            User savedUser = userRepository.save(user);
+
+            return UserDTO.fromEntity(savedUser);
+        } catch (ExpiredJwtException | UserNotFoundException | TokenValidationException ex) {
+            logger.error(ex.getMessage());
+            userErrorCounter.increment();
+
+            throw ex;
+        } catch (Exception ex) {
+            logger.error(ex.getMessage());
+
+            throw new RuntimeException("An error occurred while updating password");
+        }
+    }
 
     private boolean hasValue(String str) {
         return str != null && !str.trim().isEmpty();

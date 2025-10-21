@@ -1,21 +1,24 @@
 package com.example.banking_api.users;
 
-import com.example.banking_api.config.exceptions.EmailServiceException;
 import com.example.banking_api.config.exceptions.UserNotFoundException;
 import com.example.banking_api.config.exceptions.UserValidationException;
-import com.example.banking_api.emails.EmailDTO;
+import com.example.banking_api.emails.EmailResponseDTO;
 import com.example.banking_api.emails.UserEmailRabbitService;
+import com.example.banking_api.jwts.ResetTokenActions;
 import com.example.banking_api.users.records.DeletedUser;
 import com.example.banking_api.users.records.UpdateUserDTO;
 import com.example.banking_api.users.records.UserDTO;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import io.micrometer.core.instrument.Counter;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -26,6 +29,8 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final Logger logger = LoggerFactory.getLogger(UserService.class);
     private final UserEmailRabbitService userEmailRabbitService;
+    private final ResetTokenActions resetTokenActions;
+    private final String USER_SERVICE_RESET_PASSWORD_LINK;
     //My metrics
     private final Counter userErrorCounter;
     private final Counter emailCounter;
@@ -36,10 +41,14 @@ public class UserService {
             PasswordEncoder passwordEncoder,
             UserRepository userRepository,
             MeterRegistry meterRegistry,
+            ResetTokenActions resetTokenActions,
+            @Value("${USER_SERVICE_RESET_PASSWORD_LINK}") String USER_SERVICE_RESET_PASSWORD_LINK,
             UserEmailRabbitService userEmailRabbitService) {
         this.passwordEncoder = passwordEncoder;
         this.userRepository = userRepository;
         this.userEmailRabbitService = userEmailRabbitService;
+        this.resetTokenActions = resetTokenActions;
+        this.USER_SERVICE_RESET_PASSWORD_LINK = USER_SERVICE_RESET_PASSWORD_LINK;
         this.userErrorCounter = Counter.builder("user-service.user.errors.counter")
                 .description("Error counter for user service")
                 .register(meterRegistry);
@@ -129,16 +138,29 @@ public class UserService {
         return UserDTO.fromEntity(savedUser);
     }
 
-    public void requestEmailSending() {
-//        try {
-            EmailDTO response = userEmailRabbitService.sendEmailAndReceive();
-            System.out.println(response.toString());
-//        } catch (EmailServiceException e) {
-//            logger.error("Error retrieving response: {}", e.getMessage());
-//
-//            throw e;
-//        }
+    public ResponseEntity<?> requestEmailSending(String email) {
+        User user = userRepository.findUserByEmail(email)
+                .orElseThrow(() -> new UserNotFoundException(String.format("User with email %s not found", email)));
+        String token = resetTokenActions.generatePasswordResetToken(user.getEmail(), Duration.ofMinutes(15));
+        String link = String.format("%s?token=%s", USER_SERVICE_RESET_PASSWORD_LINK ,token);
+
+        EmailResponseDTO response = userEmailRabbitService.sendEmailAndReceive(link, user.getEmail());
+
+        if (response.isSuccess()) {
+            emailCounter.increment();
+
+            String message = response.getData() != null ? response.getData() : "Email sent successfully!";
+            return ResponseEntity.ok().body(Map.of("message", message));
+        }
+
+        failedEmailCounter.increment();
+
+        return ResponseEntity.status(response.getStatusCode()).body(response.getError());
     }
+
+//    public ResponseEntity<UserDTO> updatePassword(UpdateUserDTO updateUserDTO, String token) {
+//
+//    }
 
     private boolean hasValue(String str) {
         return str != null && !str.trim().isEmpty();

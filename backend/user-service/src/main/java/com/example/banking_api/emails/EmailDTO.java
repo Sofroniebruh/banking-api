@@ -4,8 +4,7 @@ import lombok.Data;
 
 @Data
 public class EmailDTO {
-    private boolean success;
-    private int statusCode;
-    private String data;
-    private String error;
+    private String email;
+    private String messageBody;
+    private String subject;
 }

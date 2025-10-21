@@ -12,30 +12,35 @@ import org.springframework.stereotype.Service;
 public class UserEmailRabbitService {
     private final RabbitTemplate rabbitTemplate;
 
-    public EmailDTO sendEmailAndReceive() {
+    public EmailResponseDTO sendEmailAndReceive(String link, String email) {
         try {
-            String link = "test_link";
             ObjectMapper objectMapper = new ObjectMapper();
+
+            EmailDTO emailDTO = new EmailDTO();
+
+            emailDTO.setEmail(email);
+            emailDTO.setMessageBody(link);
+            emailDTO.setSubject("Reset your password");
 
             Object response = rabbitTemplate.convertSendAndReceive(
                     RabbitConfig.EMAIL_EXCHANGE,
                     RabbitConfig.EMAIL_ROUTING_KEY,
-                    link
+                    emailDTO
             );
 
             if (response == null) {
                 throw new EmailServiceException("Response was not received, timeout");
             }
 
-            EmailDTO emailDTO = objectMapper.convertValue(response, EmailDTO.class);
+            EmailResponseDTO emailResponseDTO = objectMapper.convertValue(response, EmailResponseDTO.class);
 
-            if (emailDTO.getError() != null) {
-                throw new EmailServiceException(emailDTO.getError());
+            if (emailResponseDTO.getError() != null) {
+                throw new EmailServiceException(emailResponseDTO.getError());
             }
 
-            System.out.println("DTO: " + emailDTO);
+            System.out.println("DTO: " + emailResponseDTO);
 
-            return emailDTO;
+            return emailResponseDTO;
         } catch (Exception e) {
             throw new EmailServiceException("Failed to send email: " + e.getMessage());
         }

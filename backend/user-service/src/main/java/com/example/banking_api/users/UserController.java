@@ -3,6 +3,7 @@ package com.example.banking_api.users;
 import com.example.banking_api.users.records.DeletedUser;
 import com.example.banking_api.users.records.UpdateUserDTO;
 import com.example.banking_api.users.records.UserDTO;
+import com.example.banking_api.users.records.UserEmailDTO;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -30,16 +31,17 @@ public class UserController {
         return ResponseEntity.ok(updatedUser);
     }
 
-    @PutMapping("/{id}/password-reset")
-    public ResponseEntity<?> passwordResetRequest(@PathVariable UUID id) {
-        userService.requestEmailSending();
+    @PutMapping("/password-reset-initialization")
+    public ResponseEntity<?> passwordResetRequest(@RequestBody UserEmailDTO userEmailDTO) {
+        if (userEmailDTO.email() == null || userEmailDTO.email().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Email cannot be empty"));
+        }
 
-        return ResponseEntity.ok().body(Map.of("message", "Password Reset Request"));
+        return userService.requestEmailSending(userEmailDTO.email().trim());
     }
 
-//    @PutMapping("/{id}")
+//    @PutMapping("/password-reset")
 //    public ResponseEntity<UserDTO> passwordUpdate(
-//            @PathVariable UUID id,
 //            @RequestBody UpdateUserDTO userDTO,
 //            @RequestParam String token) {
 //

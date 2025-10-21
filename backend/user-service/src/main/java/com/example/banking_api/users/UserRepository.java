@@ -15,5 +15,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
            THEN TRUE ELSE FALSE END
     """)
     boolean userExists(@Param("userId") UUID userId);
+
     Optional<User> findUserById(UUID id);
+
+    Optional<User> findUserByEmail(String email);
 }

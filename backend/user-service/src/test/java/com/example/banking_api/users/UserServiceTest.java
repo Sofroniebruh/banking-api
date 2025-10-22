@@ -9,6 +9,7 @@ import com.example.banking_api.emails.EmailResponseDTO;
 import com.example.banking_api.emails.UserEmailRabbitService;
 import com.example.banking_api.jwts.ResetTokenActions;
 import com.example.banking_api.redis.TokenManager;
+import com.example.banking_api.redis.exceptions.RedisOperationException;
 import com.example.banking_api.users.records.DeletedUser;
 import com.example.banking_api.users.records.ResetPasswordDTO;
 import com.example.banking_api.users.records.UpdateUserDTO;
@@ -30,6 +31,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -251,80 +253,141 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("Should update password successfully")
-    void shouldUpdatePasswordSuccessfully() {
+    @DisplayName("When requesting email sending successfully store token in the db")
+    void shouldRequestEmailSendingSuccessfullyStoreTokenInDb() {
         String email = "test@example.com";
         String token = "qwerty";
-        String newPassword = "qwerty123!";
-        String encodedPassword = "encoded";
-
+        String link = "http://localhost:8082/reset-password?token=" + token;
         User user = createTestUser(UUID.randomUUID());
-        user.setEmail(email);
-        ResetPasswordDTO resetDTO = new ResetPasswordDTO(email, newPassword);
+        EmailResponseDTO emailResponseDTO = new EmailResponseDTO();
 
-        when(resetTokenActions.isTokenValid(token, email)).thenReturn(true);
-        when(resetTokenActions.getEmailFromToken(token)).thenReturn(email);
+        emailResponseDTO.setSuccess(true);
+        emailResponseDTO.setStatusCode(200);
+        emailResponseDTO.setData("Success!");
+
         when(userRepository.findUserByEmail(email)).thenReturn(Optional.of(user));
-        when(passwordEncoder.encode(newPassword)).thenReturn(encodedPassword);
-        when(userRepository.save(any(User.class))).thenReturn(user);
+        when(resetTokenActions.generatePasswordResetToken(user.getEmail(), Duration.ofMinutes(15))).thenReturn(token);
+        when(userEmailRabbitService.sendEmailAndReceive(link, email)).thenReturn(emailResponseDTO);
 
-        UserDTO result = userService.updatePassword(resetDTO, token);
+        userService.requestEmailSending(email);
 
-        assertNotNull(result);
-        assertEquals(encodedPassword, user.getPassword());
+        assertEquals(1.0, meterRegistry.counter(EMAIL_SUCCESS_COUNTER).count());
 
-        verify(userRepository, times(1)).save(user);
+        verify(tokenManager, times(1)).storeActiveToken(email, token, 15, TimeUnit.MINUTES);
     }
 
     @Test
-    @DisplayName("Should throw TokenValidationException for invalid token")
-    void shouldThrowTokenValidationExceptionForInvalidToken() {
+    @DisplayName("Should throw an exception if the redis insertion failed")
+    void shouldThrowAnExceptionIfTheRedisInsertionFailed() {
         String email = "test@example.com";
         String token = "qwerty";
+        User user = createTestUser(UUID.randomUUID());
+
+        when(userRepository.findUserByEmail(email)).thenReturn(Optional.of(user));
+        when(resetTokenActions.generatePasswordResetToken(user.getEmail(), Duration.ofMinutes(15))).thenReturn(token);
+        doThrow(RedisOperationException.class).when(tokenManager).storeActiveToken(email, token, 15, TimeUnit.MINUTES);
+
+        assertThrows(RedisOperationException.class, () -> userService.requestEmailSending(email));
+        assertEquals(1.0, meterRegistry.counter(USER_ERROR_COUNTER).count());
+
+        verify(userEmailRabbitService, never()).sendEmailAndReceive(anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("Should throw TokenValidationException if redis did not find any tokens associated")
+    void shouldThrowAnExceptionIfRedisDidNotFindAnyTokens() {
+        String email = "test@example.com";
         ResetPasswordDTO resetDTO = new ResetPasswordDTO(email, "qwerty123");
 
-        when(resetTokenActions.isTokenValid(token, email)).thenReturn(false);
+        when(tokenManager.getActiveToken(email)).thenReturn(null);
+
+        assertThrows(TokenValidationException.class, () -> userService.updatePassword(resetDTO, email));
+        assertEquals(1.0, meterRegistry.counter(USER_ERROR_COUNTER).count());
+
+        verify(userRepository, never()).findUserByEmail(email);
+    }
+
+    @Test
+    @DisplayName("Should throw a TokenValidationException when stored unused token for reset differs from the one received for reset")
+    void shouldThrowAnExceptionIfStoredUnusedTokenForReset() {
+        String email = "test@example.com";
+        ResetPasswordDTO resetDTO = new ResetPasswordDTO(email, "qwerty123");
+        String token1 = "qwerty123";
+        String token2 = "qwerty123!";
+
+        when(tokenManager.getActiveToken(email)).thenReturn(token1);
+
+        assertThrows(TokenValidationException.class, () -> userService.updatePassword(resetDTO, token2));
+        assertEquals(1.0, meterRegistry.counter(USER_ERROR_COUNTER).count());
+
+        verify(userRepository, never()).findUserByEmail(email);
+    }
+
+    @Test
+    @DisplayName("Should throw a TokenValidationException if the token was already used")
+    void shouldThrowAnExceptionIfTheTokenWasAlreadyUsed() {
+        String email = "test@example.com";
+        ResetPasswordDTO resetDTO = new ResetPasswordDTO(email, "qwerty123");
+        String token = "qwerty123";
+
+        when(tokenManager.getActiveToken(email)).thenReturn(token);
+        when(tokenManager.isTokenUsed(email)).thenReturn(true);
 
         assertThrows(TokenValidationException.class, () -> userService.updatePassword(resetDTO, token));
         assertEquals(1.0, meterRegistry.counter(USER_ERROR_COUNTER).count());
+
+        verify(userRepository, never()).findUserByEmail(email);
     }
 
     @Test
-    @DisplayName("Should handle expired JWT token")
-    void shouldHandleExpiredJwtToken() {
+    @DisplayName("Should throw a ExpiredJwtException if the token was expired")
+    void shouldThrowAnExceptionIfTheTokenWasInvalid() {
         String email = "test@example.com";
-        String token = "qwerty";
         ResetPasswordDTO resetDTO = new ResetPasswordDTO(email, "qwerty123");
+        String token = "qwerty123";
 
-        when(resetTokenActions.isTokenValid(token, email)).thenThrow(new ExpiredJwtException(null, null, "Token expired"));
+        when(tokenManager.getActiveToken(email)).thenReturn(token);
+        when(tokenManager.isTokenUsed(email)).thenReturn(false);
+        when(resetTokenActions.isTokenValid(token, email)).thenThrow(ExpiredJwtException.class);
 
         assertThrows(ExpiredJwtException.class, () -> userService.updatePassword(resetDTO, token));
         assertEquals(1.0, meterRegistry.counter(USER_ERROR_COUNTER).count());
+
+        verify(userRepository, never()).findUserByEmail(email);
     }
 
     @Test
-    @DisplayName("Should throw UserNotFoundException when user not found by email from token")
-    void shouldThrowUserNotFoundExceptionWhenUserNotFoundByEmailFromToken() {
+    @DisplayName("Should successfully update the password")
+    void shouldSuccessfullyUpdatePassword() {
         String email = "test@example.com";
-        String token = "qwerty";
+        User user = createTestUser(UUID.randomUUID());
         ResetPasswordDTO resetDTO = new ResetPasswordDTO(email, "qwerty123");
+        String token = "qwerty123";
 
+        when(tokenManager.getActiveToken(email)).thenReturn(token);
+        when(tokenManager.isTokenUsed(email)).thenReturn(false);
         when(resetTokenActions.isTokenValid(token, email)).thenReturn(true);
-        when(resetTokenActions.getEmailFromToken(token)).thenReturn(email);
-        when(userRepository.findUserByEmail(email)).thenReturn(Optional.empty());
+        when(userRepository.findUserByEmail(email)).thenReturn(Optional.of(user));
+        when(passwordEncoder.encode(resetDTO.password())).thenReturn("encoded");
+        when(userRepository.save(user)).thenReturn(user);
 
-        assertThrows(UserNotFoundException.class, () -> userService.updatePassword(resetDTO, token));
-        assertEquals(1.0, meterRegistry.counter(USER_ERROR_COUNTER).count());
+        assertDoesNotThrow(() -> userService.updatePassword(resetDTO, token));
+        assertEquals(0.0, meterRegistry.counter(USER_ERROR_COUNTER).count());
+        assertEquals("encoded", user.getPassword());
+
+        verify(userRepository, times(1)).save(any(User.class));
+        verify(tokenManager, times(1)).markTokenAsUsed(email, token, 15, TimeUnit.MINUTES);
     }
 
-    private User createTestUser(UUID id) {
+    private User createTestUser(UUID id)
+    {
         return User.builder()
-            .id(id)
-            .name("qwerty")
-            .email("test@example.com")
-            .password("qwerty")
-            .createdAt(LocalDateTime.now())
-            .updatedAt(LocalDateTime.now())
-            .build();
+                .id(id)
+                .name("qwerty")
+                .email("test@example.com")
+                .password("qwerty")
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
     }
 }

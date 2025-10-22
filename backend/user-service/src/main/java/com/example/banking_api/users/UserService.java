@@ -158,6 +158,7 @@ public class UserService {
         } catch (RedisOperationException ex) {
             logger.error("Failed to store token for email: {}", email, ex);
             userErrorCounter.increment();
+
             throw ex;
         }
 

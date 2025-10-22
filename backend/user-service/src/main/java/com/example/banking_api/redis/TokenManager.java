@@ -19,12 +19,14 @@ public class TokenManager {
     public void storeActiveToken(String email, String token, long timeout, TimeUnit unit) {
         String hashedEmail = hashEmail(email);
         String key = ACTIVE_TOKEN_PREFIX + hashedEmail;
+
         redisService.setValueWithExpiry(key, token, timeout, unit);
     }
     
     public String getActiveToken(String email) {
         String hashedEmail = hashEmail(email);
         String key = ACTIVE_TOKEN_PREFIX + hashedEmail;
+
         return (String) redisService.getValue(key);
     }
     
@@ -40,12 +42,14 @@ public class TokenManager {
     public boolean isTokenUsed(String email) {
         String hashedEmail = hashEmail(email);
         String key = USED_TOKEN_PREFIX + hashedEmail;
+
         return redisService.hasKey(key);
     }
     
     public void deleteActiveToken(String email) {
         String hashedEmail = hashEmail(email);
         String key = ACTIVE_TOKEN_PREFIX + hashedEmail;
+
         redisService.deleteKey(key);
     }
     

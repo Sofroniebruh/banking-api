@@ -1,0 +1,5 @@
+USER_SERVICE_RESET_PASSWORD_LINK: http://localhost:8082/api/v1/users/password-reset
+JWT_SECRET: 9vW3zYXvO4xQZbsl0qXOfyYqC1lYa6CvQq1p7dRqH+E=
+  
+RABBIT_USERNAME: test
+RABBIT_PASSWORD: test

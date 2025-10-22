@@ -19,6 +19,8 @@ import org.springframework.context.annotation.Configuration;
 public class RabbitConfig {
     private final String FACTORY_USERNAME;
     private final String FACTORY_PASSWORD;
+    private final String FACTORY_HOST;
+    private final String FACTORY_PORT;
     public static final String EMAIL_EXCHANGE = "email.exchange";
     public static final String EMAIL_QUEUE = "email.queue";
     public static final String EMAIL_ROUTING_KEY = "email.routing.key";
@@ -28,17 +30,22 @@ public class RabbitConfig {
     public RabbitConfig(
             @Value("${RABBIT_USERNAME}") String FACTORY_USERNAME,
             @Value("${RABBIT_PASSWORD}") String FACTORY_PASSWORD,
+            @Value("${RABBIT_HOST}") String FACTORY_HOST,
+            @Value("${RABBIT_PORT}") String FACTORY_PORT,
             MeterRegistry meterRegistry) {
         this.emailErrorCounter = Counter.builder("errors.email.rabbit")
                 .description("Errors while sending rabbit messages to send an email")
                 .register(meterRegistry);
         this.FACTORY_USERNAME = FACTORY_USERNAME;
         this.FACTORY_PASSWORD = FACTORY_PASSWORD;
+        this.FACTORY_HOST = FACTORY_HOST;
+        this.FACTORY_PORT = FACTORY_PORT;
     }
 
     @Bean
     public CachingConnectionFactory connectionFactory() {
-        CachingConnectionFactory factory = new CachingConnectionFactory("rabbitmq-bank-api");
+        CachingConnectionFactory factory = new CachingConnectionFactory(FACTORY_HOST);
+        factory.setPort(Integer.parseInt(FACTORY_PORT));
         factory.setUsername(FACTORY_USERNAME);
         factory.setPassword(FACTORY_PASSWORD);
         factory.setPublisherConfirmType(CachingConnectionFactory.ConfirmType.CORRELATED);

@@ -1,4 +1,4 @@
-package com.example.banking_api.users;
+package com.example.banking_api.services;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -10,6 +10,9 @@ import com.example.banking_api.emails.UserEmailRabbitService;
 import com.example.banking_api.jwts.ResetTokenActions;
 import com.example.banking_api.redis.TokenManager;
 import com.example.banking_api.redis.exceptions.RedisOperationException;
+import com.example.banking_api.users.User;
+import com.example.banking_api.users.UserRepository;
+import com.example.banking_api.users.UserService;
 import com.example.banking_api.users.records.DeletedUser;
 import com.example.banking_api.users.records.ResetPasswordDTO;
 import com.example.banking_api.users.records.UpdateUserDTO;

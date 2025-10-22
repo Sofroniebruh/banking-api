@@ -8,6 +8,7 @@ import com.example.banking_api.config.exceptions.UserValidationException;
 import com.example.banking_api.emails.EmailResponseDTO;
 import com.example.banking_api.emails.UserEmailRabbitService;
 import com.example.banking_api.jwts.ResetTokenActions;
+import com.example.banking_api.redis.TokenManager;
 import com.example.banking_api.users.records.DeletedUser;
 import com.example.banking_api.users.records.ResetPasswordDTO;
 import com.example.banking_api.users.records.UpdateUserDTO;
@@ -40,6 +41,7 @@ class UserServiceTest {
     @Mock private UserEmailRabbitService userEmailRabbitService;
     @Mock private ResetTokenActions resetTokenActions;
     @Mock private MeterRegistry meterRegistry;
+    @Mock private TokenManager tokenManager;
     private UserService userService;
     private final String USER_ERROR_COUNTER = "user-service.user.errors.counter";
     private final String EMAIL_ERROR_COUNTER = "user-service.emails.errors.counter";
@@ -56,6 +58,7 @@ class UserServiceTest {
                 userRepository,
                 meterRegistry,
                 resetTokenActions,
+                tokenManager,
                 RESET_PASSWORD_LINK,
                 userEmailRabbitService
         );

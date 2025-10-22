@@ -6,6 +6,8 @@ import com.example.banking_api.config.exceptions.UserValidationException;
 import com.example.banking_api.emails.EmailResponseDTO;
 import com.example.banking_api.emails.UserEmailRabbitService;
 import com.example.banking_api.jwts.ResetTokenActions;
+import com.example.banking_api.redis.TokenManager;
+import com.example.banking_api.redis.exceptions.RedisOperationException;
 import com.example.banking_api.users.records.DeletedUser;
 import com.example.banking_api.users.records.ResetPasswordDTO;
 import com.example.banking_api.users.records.UpdateUserDTO;
@@ -25,6 +27,7 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class UserService {
@@ -34,6 +37,7 @@ public class UserService {
     private final UserEmailRabbitService userEmailRabbitService;
     private final ResetTokenActions resetTokenActions;
     private final String USER_SERVICE_RESET_PASSWORD_LINK;
+    private final TokenManager tokenManager;
     //My metrics
     private final Counter userErrorCounter;
     private final Counter emailCounter;
@@ -45,6 +49,7 @@ public class UserService {
             UserRepository userRepository,
             MeterRegistry meterRegistry,
             ResetTokenActions resetTokenActions,
+            TokenManager tokenManager,
             @Value("${USER_SERVICE_RESET_PASSWORD_LINK}") String USER_SERVICE_RESET_PASSWORD_LINK,
             UserEmailRabbitService userEmailRabbitService) {
         this.passwordEncoder = passwordEncoder;
@@ -52,6 +57,7 @@ public class UserService {
         this.userEmailRabbitService = userEmailRabbitService;
         this.resetTokenActions = resetTokenActions;
         this.USER_SERVICE_RESET_PASSWORD_LINK = USER_SERVICE_RESET_PASSWORD_LINK;
+        this.tokenManager = tokenManager;
         this.userErrorCounter = Counter.builder("user-service.user.errors.counter")
                 .description("Error counter for user service")
                 .register(meterRegistry);
@@ -147,6 +153,14 @@ public class UserService {
         String token = resetTokenActions.generatePasswordResetToken(user.getEmail(), Duration.ofMinutes(15));
         String link = String.format("%s?token=%s", USER_SERVICE_RESET_PASSWORD_LINK ,token);
 
+        try {
+            tokenManager.storeActiveToken(email, token, 15, TimeUnit.MINUTES);
+        } catch (RedisOperationException ex) {
+            logger.error("Failed to store token for email: {}", email, ex);
+            userErrorCounter.increment();
+            throw ex;
+        }
+
         EmailResponseDTO response = userEmailRabbitService.sendEmailAndReceive(link, user.getEmail());
 
         if (response.isSuccess()) {
@@ -164,17 +178,29 @@ public class UserService {
     @Transactional
     public UserDTO updatePassword(ResetPasswordDTO updateUserDTO, String token) {
         try {
-            if (!resetTokenActions.isTokenValid(token, updateUserDTO.email())) {
-                throw new TokenValidationException("Invalid token");
-            }
+            String email = updateUserDTO.email();
+            String storedToken = tokenManager.getActiveToken(email);
 
-            String email = resetTokenActions.getEmailFromToken(token);
+            if (storedToken == null) {
+                throw new TokenValidationException("Token is invalid or expired");
+            }
+            if (!storedToken.equals(token)) {
+                throw new TokenValidationException("Token is invalid");
+            }
+            if (tokenManager.isTokenUsed(email)) {
+                throw new TokenValidationException("Token has already been used");
+            }
+            if (!resetTokenActions.isTokenValid(token, email)) {
+                throw new TokenValidationException("Token is invalid");
+            }
 
             User user = userRepository.findUserByEmail(email)
                     .orElseThrow(() -> new UserNotFoundException(String.format("User with email %s not found", email)));
 
             user.setPassword(passwordEncoder.encode(updateUserDTO.password()));
             User savedUser = userRepository.save(user);
+
+            tokenManager.markTokenAsUsed(email, token, 15, TimeUnit.MINUTES);
 
             return UserDTO.fromEntity(savedUser);
         } catch (ExpiredJwtException | UserNotFoundException | TokenValidationException ex) {

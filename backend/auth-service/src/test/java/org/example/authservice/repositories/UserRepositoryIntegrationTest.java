@@ -39,8 +39,7 @@ public class UserRepositoryIntegrationTest
             .withReuse(true);
 
     @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry)
-    {
+    static void configureProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
@@ -60,8 +59,7 @@ public class UserRepositoryIntegrationTest
 
     @Test
     @DisplayName("Should save user, generate ID, createdAt, updatedAt")
-    void shouldSaveUser()
-    {
+    void shouldSaveUser() {
         User user = userSetUp();
         User savedUser = userRepository.save(user);
 
@@ -76,8 +74,7 @@ public class UserRepositoryIntegrationTest
 
     @Test
     @DisplayName("Should delete user successfully")
-    void shouldDeleteUser()
-    {
+    void shouldDeleteUser() {
         User user = userSetUp();
 
         userRepository.delete(user);
@@ -89,8 +86,7 @@ public class UserRepositoryIntegrationTest
 
     @Test
     @DisplayName("Should find user by email")
-    void shouldFindUserByEmail()
-    {
+    void shouldFindUserByEmail() {
         User user = userSetUp();
 
         userRepository.save(user);
@@ -106,8 +102,7 @@ public class UserRepositoryIntegrationTest
 
     @Test
     @DisplayName("Should return empty if requested user was not found")
-    void shouldReturnEmptyIfUserNotFound()
-    {
+    void shouldReturnEmptyIfUserNotFound() {
         Optional<User> optionalUser = userRepository.findUserByEmail("test@example.com");
 
         assertTrue(optionalUser.isEmpty());
@@ -115,8 +110,7 @@ public class UserRepositoryIntegrationTest
 
     @Test
     @DisplayName("Should successfully update user")
-    void shouldUpdateUser()
-    {
+    void shouldUpdateUser() {
         User user = userSetUp();
 
         User savedUser = userRepository.save(user);
@@ -138,8 +132,7 @@ public class UserRepositoryIntegrationTest
         assertTrue(foundUser.getUpdatedAt().isAfter(foundUser.getCreatedAt()));
     }
 
-    private User userSetUp()
-    {
+    private User userSetUp() {
         User user = new User();
 
         user.setRoles(new ArrayList<>(List.of(Role.USER)));

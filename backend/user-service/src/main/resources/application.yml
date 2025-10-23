@@ -41,3 +41,25 @@ spring:
 
 server:
   port: 8082
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: never
+      show-components: never
+      group:
+        public:
+          include: ping
+          show-details: never
+        detailed:
+          include: "*"
+          show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      environment: ${ENVIRONMENT:dev}

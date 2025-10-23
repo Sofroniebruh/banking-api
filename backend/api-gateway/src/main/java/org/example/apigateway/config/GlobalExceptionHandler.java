@@ -2,7 +2,6 @@ package org.example.apigateway.config;
 
 import org.example.apigateway.config.exceptions.AuthenticationServiceUnavailable;
 import org.example.apigateway.config.exceptions.AuthServiceClientException;
-import org.example.apigateway.validation.AuthService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -28,9 +27,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpClientErrorException.class)
     public ResponseEntity<String> handleHttpClientErrorException(HttpClientErrorException e) {
-        logger.warn(e.getMessage());
-        logger.warn(e.getResponseBodyAsString());
-        logger.warn(String.valueOf(e));
+        logger.error("Error from downstream service: {}", e.getMessage());
+
         return ResponseEntity.status(e.getStatusCode()).body(e.getResponseBodyAsString().isEmpty() ? "{\"error\":\"Forbidden request\"} " : e.getResponseBodyAsString());
     }
 }

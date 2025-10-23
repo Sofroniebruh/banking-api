@@ -16,9 +16,13 @@ public class GatewayService {
     }
 
     public ResponseEntity<String> proxyToService(HttpServletRequest request, Object body, String serviceUrl) {
+        String uri = serviceUrl + request.getRequestURI();
+
+        String urlWithParams = addParamsToUrlIfPresent(request, uri);
+        
         var requestSpec = downstreamRestClient
                 .method(org.springframework.http.HttpMethod.valueOf(request.getMethod()))
-                .uri(serviceUrl + request.getRequestURI());
+                .uri(urlWithParams);
 
         if (body != null) {
             requestSpec.body(body);
@@ -31,10 +35,12 @@ public class GatewayService {
         String originalPath = request.getRequestURI();
         String rewrittenPath = originalPath.startsWith(stripPrefix) ? 
             originalPath.substring(stripPrefix.length()) : originalPath;
+        String uri = serviceUrl + rewrittenPath;
+        String urlWithParams = addParamsToUrlIfPresent(request, uri);
             
         var requestSpec = downstreamRestClient
                 .method(org.springframework.http.HttpMethod.valueOf(request.getMethod()))
-                .uri(serviceUrl + rewrittenPath);
+                .uri(urlWithParams);
 
         if (body != null) {
             requestSpec.body(body);
@@ -51,5 +57,13 @@ public class GatewayService {
         accessTokenCookie.setSecure(secure);
 
         return accessTokenCookie;
+    }
+
+    private String addParamsToUrlIfPresent(HttpServletRequest request, String url) {
+        if (request.getQueryString() != null) {
+            url += "?" + request.getQueryString();
+        }
+
+        return url;
     }
 }

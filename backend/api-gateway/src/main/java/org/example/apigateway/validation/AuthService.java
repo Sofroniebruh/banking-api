@@ -30,7 +30,6 @@ public class AuthService {
     @CircuitBreaker(name = "authService", fallbackMethod = "fallback")
     public User validateTokenWithAuthService(String token) {
         try {
-            logger.warn("URL used" + BASE_AUTH_SERVICE_URL + "/api/v1/auth/validate");
             UserTokenInfoDTO tokenInfo = restClient
                     .post()
                     .uri(BASE_AUTH_SERVICE_URL + "/api/v1/auth/validate")
@@ -38,8 +37,6 @@ public class AuthService {
                     .header("X-Internal-Request", INTERNAL_SERVICE_SECRET)
                     .retrieve()
                     .body(UserTokenInfoDTO.class);
-
-            logger.warn("Token info: " + tokenInfo);
 
             if (tokenInfo == null) {
                 return null;
@@ -52,27 +49,31 @@ public class AuthService {
             
             return user;
         } catch (org.springframework.web.client.HttpClientErrorException ex) {
-            logger.error("Auth service returned client error: " + ex.getStatusCode() + " - " + ex.getResponseBodyAsString());
+            logger.error("Auth service returned client error: {} - {}", ex.getStatusCode(), ex.getResponseBodyAsString());
+
             throw new AuthServiceClientException(
                 "Auth service returned client error", 
                 ex.getStatusCode(), 
                 ex.getResponseBodyAsString()
             );
         } catch (org.springframework.web.client.HttpServerErrorException ex) {
-            logger.error("Auth service returned server error: " + ex.getStatusCode() + " - " + ex.getResponseBodyAsString());
+            logger.error("Auth service returned server error: {} - {}", ex.getStatusCode(), ex.getResponseBodyAsString());
+
             throw new AuthServiceClientException(
                 "Auth service returned server error", 
                 ex.getStatusCode(), 
                 ex.getResponseBodyAsString()
             );
         } catch (Exception e) {
-            logger.error("Auth service error: " + e.getMessage());
+            logger.error("Auth service error: {}", e.getMessage());
+
             throw new AuthenticationServiceUnavailable("Auth service unavailable");
         }
     }
 
     private User fallback(String token, Exception ex) {
-        logger.error(ex.getMessage());
+        logger.error("Fallback error: {}", ex.getMessage());
+
         throw new AuthenticationServiceUnavailable("Authentication service is currently unavailable");
     }
 }

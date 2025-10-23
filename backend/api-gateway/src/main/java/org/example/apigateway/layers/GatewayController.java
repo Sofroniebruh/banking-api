@@ -74,7 +74,7 @@ public class GatewayController {
     @RequestMapping("/api/v1/users/**")
     public ResponseEntity<String> proxyToUserService(
             HttpServletRequest request,
-            @RequestBody(required = false) String body) {
+            @RequestBody(required = false) Object body) {
         return gatewayService.proxyToService(request, body, "http://user-service:8082");
     }
 
@@ -83,6 +83,13 @@ public class GatewayController {
             HttpServletRequest request,
             @RequestBody(required = false) String body) {
         return gatewayService.proxyToServiceWithPathRewrite(request, body, "http://auth-service:8081", "/actuator/auth-service");
+    }
+
+    @RequestMapping("/actuator/user-service/**")
+    public ResponseEntity<String> proxyToUserServiceActuator(
+            HttpServletRequest request,
+            @RequestBody(required = false) String body) {
+        return gatewayService.proxyToServiceWithPathRewrite(request, body, "http://user-service:8082", "/actuator/user-service");
     }
 
 //    @RequestMapping("/api/v1/accounts/**")

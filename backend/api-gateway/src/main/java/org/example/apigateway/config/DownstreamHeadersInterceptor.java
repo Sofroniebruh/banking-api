@@ -28,6 +28,7 @@ public class DownstreamHeadersInterceptor implements ClientHttpRequestIntercepto
             addHeaderIfPresent(request, servletRequest, "X-User-Roles");
             addHeaderIfPresent(request, servletRequest, "X-User-Email");
             addHeaderIfPresent(request, servletRequest, "X-Internal-Request");
+            addHeaderIfPresent(request, servletRequest, "Content-Type");
             
             addCookiesIfPresent(request, servletRequest);
         }

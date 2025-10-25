@@ -8,6 +8,7 @@ import org.example.accountservice.accounts.records.AccountTransactionsDTO;
 import org.example.accountservice.accounts.records.TransactionDTO;
 import org.example.accountservice.accounts.records.UpdateAccountDTO;
 import org.example.accountservice.configs.RabbitConfig;
+import org.example.accountservice.configs.exceptions.AccountAlreadyCreatedException;
 import org.example.accountservice.configs.exceptions.BankAccountNotFoundException;
 import org.example.accountservice.configs.exceptions.TransactionsMessageFailedResponseException;
 import org.slf4j.Logger;
@@ -18,7 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 import io.micrometer.core.instrument.Counter;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -64,11 +68,30 @@ public class AccountService {
                 throw new TransactionsMessageFailedResponseException("Response was not received, timeout");
             }
 
-            List<TransactionDTO> transactions = objectMapper.convertValue(
+            List<Map<String, Object>> transactionMaps = objectMapper.convertValue(
                     response,
-                    new TypeReference<List<TransactionDTO>>() {});
+                    new TypeReference<>() {});
 
-            return AccountTransactionsDTO.from(account, transactions);
+            try {
+                List<TransactionDTO> transactions = transactionMaps
+                        .stream()
+                        .map(transaction -> new TransactionDTO((UUID) transaction.get("id"), (String) transaction.get("status"), (LocalDateTime) transaction.get("createdAt")))
+                        .toList();
+
+                return AccountTransactionsDTO.from(account, transactions);
+
+            } catch (ClassCastException e) {
+                logger.error(e.getMessage());
+                accountErrorCounter.increment();
+
+                throw new TransactionsMessageFailedResponseException("Consumer returned different types than expected");
+            } catch (NullPointerException e) {
+                logger.error(e.getMessage());
+                accountErrorCounter.increment();
+
+                throw new TransactionsMessageFailedResponseException("Consumer returned null values");
+            }
+
         } catch (TransactionsMessageFailedResponseException | BankAccountNotFoundException e) {
             logger.error(e.getMessage());
             accountErrorCounter.increment();
@@ -79,16 +102,29 @@ public class AccountService {
 
     @Transactional
     public Account createAccount(AccountDTO accountDTO) {
-        Account account = new Account();
+        try {
+            Optional<Account> createdAccount = accountRepository.findByUserId(accountDTO.userId());
 
-        account.setBalance(BigDecimal.ZERO);
-        account.setUserId(accountDTO.userId());
-        account.setCurrency(accountDTO.currency());
+            if (createdAccount.isPresent()) {
+                throw new AccountAlreadyCreatedException(String.format("Account with user id %s is already created", accountDTO.userId()));
+            }
 
-        Account savedAccount = accountRepository.save(account);
-        accountCreatedCounter.increment();
+            Account account = new Account();
 
-        return savedAccount;
+            account.setBalance(BigDecimal.ZERO);
+            account.setUserId(accountDTO.userId());
+            account.setCurrency(accountDTO.currency());
+
+            Account savedAccount = accountRepository.save(account);
+            accountCreatedCounter.increment();
+
+            return savedAccount;
+        } catch (AccountAlreadyCreatedException e) {
+            logger.error(e.getMessage());
+            accountErrorCounter.increment();
+
+            throw e;
+        }
     }
 
     @Transactional

@@ -16,7 +16,7 @@ public class Account {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
-    private UUID userId;
+    private String userId;
     private BigDecimal balance;
     @CreationTimestamp
     private LocalDateTime createdAt;

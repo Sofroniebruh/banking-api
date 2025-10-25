@@ -1,5 +1,6 @@
 package org.example.accountservice.configs;
 
+import org.example.accountservice.configs.exceptions.AccountAlreadyCreatedException;
 import org.example.accountservice.configs.exceptions.BankAccountNotFoundException;
 import org.example.accountservice.configs.records.ErrorResponse;
 import org.springframework.http.HttpStatus;
@@ -19,6 +20,13 @@ public class GlobalExceptionHandler {
         ErrorResponse response = ErrorResponse.from(e.getMessage(), Instant.now());
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(AccountAlreadyCreatedException.class)
+    public ResponseEntity<ErrorResponse> accountAlreadyCreated(AccountAlreadyCreatedException e) {
+        ErrorResponse response = ErrorResponse.from(e.getMessage(), Instant.now());
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

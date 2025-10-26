@@ -5,10 +5,12 @@ import lombok.RequiredArgsConstructor;
 import org.example.accountservice.accounts.records.AccountDTO;
 import org.example.accountservice.accounts.records.AccountTransactionsDTO;
 import org.example.accountservice.accounts.records.UpdateAccountDTO;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/api/v1/accounts")
@@ -17,10 +19,10 @@ public class AccountController {
     private final AccountService accountService;
 
     @GetMapping("/{id}")
-    public ResponseEntity<AccountTransactionsDTO> findById(@PathVariable("id") UUID id) {
-        AccountTransactionsDTO account = accountService.getAccountById(id);
-
-        return ResponseEntity.ok(account);
+    public CompletableFuture<ResponseEntity<AccountTransactionsDTO>> getAccount(@PathVariable UUID id) {
+        return accountService.getAccountByIdAsync(id)
+                .thenApply(ResponseEntity::ok)
+                .exceptionally(ex -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
     }
 
     @PostMapping

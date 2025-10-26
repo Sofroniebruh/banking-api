@@ -54,14 +54,7 @@ public class AccountService {
     @Transactional
     public Account createAccount(AccountDTO accountDTO) {
         try {
-            logger.info("Creating account for userId: {}", accountDTO.userId());
-            
-            if (accountDTO.userId() == null) {
-                throw new IllegalArgumentException("User ID cannot be null");
-            }
-            
             Optional<Account> optionalAccount = accountRepository.findAccountByUserId(accountDTO.userId());
-            logger.info("Found existing account: {}", optionalAccount.isPresent());
 
             if (optionalAccount.isPresent()) {
                 throw new AccountAlreadyCreatedException(String.format("Account with user id %s is already created", accountDTO.userId()));
@@ -75,22 +68,21 @@ public class AccountService {
             account.setCreatedAt(LocalDateTime.now());
             account.setUpdatedAt(LocalDateTime.now());
 
-            logger.info("Saving account to database");
             Account savedAccount = accountRepository.save(account);
             accountCreatedCounter.increment();
 
-            logger.info("Saved account to database: {}", savedAccount);
-            logger.info("Adding account to Redis");
             accountRedisService.addAccountToRedis(savedAccount);
 
             return savedAccount;
         } catch (AccountAlreadyCreatedException e) {
             logger.error(e.getMessage());
             accountErrorCounter.increment();
+
             throw e;
         } catch (RedisOperationException | RedisConnectionException e) {
             logger.error(e.getMessage());
             accountErrorCounter.increment();
+
             throw new InternalAccountException("Internal Server Error");
         } catch (Exception e) {
             logger.error("Unexpected error creating account: {}", e.getMessage(), e);

@@ -1,6 +1,8 @@
 package org.example.accountservice.configs;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
@@ -58,7 +60,11 @@ public class RabbitConfig {
     @Bean
     public MessageConverter messageConverter() {
         ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
         Jackson2JsonMessageConverter converter = new Jackson2JsonMessageConverter(objectMapper);
+
         converter.setCreateMessageIds(true);
 
         return converter;

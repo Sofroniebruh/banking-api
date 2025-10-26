@@ -75,7 +75,11 @@ public class AccountService {
             try {
                 List<TransactionDTO> transactions = transactionMaps
                         .stream()
-                        .map(transaction -> new TransactionDTO((UUID) transaction.get("id"), (String) transaction.get("status"), (LocalDateTime) transaction.get("createdAt")))
+                        .map(transaction -> new TransactionDTO(
+                                UUID.fromString(transaction.get("id").toString()),
+                                transaction.get("status").toString(),
+                                LocalDateTime.parse(transaction.get("createdAt").toString()))
+                        )
                         .toList();
 
                 return AccountTransactionsDTO.from(account, transactions);

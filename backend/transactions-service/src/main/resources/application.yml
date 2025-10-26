@@ -2,16 +2,19 @@ spring:
   application:
     name:
       transactions-service
+
   rabbitmq:
     host: ${RABBIT_HOST}
     port: ${RABBIT_PORT}
     username: ${RABBIT_USERNAME}
     password: ${RABBIT_PASSWORD}
+
   datasource:
     username: ${DATABASE_USER}
     password: ${DATABASE_PASSWORD}
     url: ${DATABASE_URL}
     driver-class-name: org.postgresql.Driver
+
   jpa:
     hibernate:
       ddl-auto: update
@@ -22,6 +25,20 @@ spring:
       hibernate:
         format_sql: true
 
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
+      timeout: 60000
+      jedis:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+      ssl:
+        enabled: false
 
 server:
   port: 8084

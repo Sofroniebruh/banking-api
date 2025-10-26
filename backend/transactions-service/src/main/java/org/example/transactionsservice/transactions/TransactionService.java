@@ -2,6 +2,9 @@ package org.example.transactionsservice.transactions;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import org.example.transactionsservice.configs.RedisConfig;
+import org.example.transactionsservice.configs.exceptions.BankAccountNotFoundException;
+import org.example.transactionsservice.redis.RedisService;
 import org.example.transactionsservice.transactions.records.CreateTransactionDTO;
 import org.example.transactionsservice.transactions.records.PaginatedResponse;
 import org.slf4j.Logger;
@@ -20,12 +23,15 @@ import java.util.UUID;
 public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final Logger logger = LoggerFactory.getLogger(TransactionService.class);
+    private final RedisService redisService;
     private final Counter transactionErrorCounter;
 
     public TransactionService(
             TransactionRepository transactionRepository,
+            RedisService redisService,
             MeterRegistry registry) {
         this.transactionRepository = transactionRepository;
+        this.redisService = redisService;
         this.transactionErrorCounter = Counter.builder("errors.transactions")
                 .description("Errors in transactions service")
                 .register(registry);
@@ -52,12 +58,23 @@ public class TransactionService {
 
     public Transaction saveTransaction(CreateTransactionDTO transactionDto) {
         try {
+            String id = transactionDto.id().replace("\"", "");
+            Object accountBalance = redisService.getHashValue(RedisConfig.ACCOUNT_KEY_PREFIX + id, "balance");
+
+            if (accountBalance == null) {
+                transactionErrorCounter.increment();
+
+                throw new BankAccountNotFoundException(String.format("Account with id: %s not found", id));
+            }
+
+            logger.info("Account balance: {}", accountBalance);
+
             Transaction transaction = new Transaction();
 
             transaction.setAmount(BigDecimal.valueOf(transactionDto.amount()));
             transaction.setStatus(TransactionStatus.valueOf(transactionDto.status().toUpperCase()));
             transaction.setDescription(transactionDto.description());
-            transaction.setAccountId(transactionDto.id());
+            transaction.setAccountId(UUID.fromString(id));
 
             return transactionRepository.save(transaction);
         } catch (IllegalArgumentException e) {

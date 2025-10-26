@@ -3,7 +3,6 @@ package org.example.transactionsservice.transactions;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.example.transactionsservice.configs.RabbitConfig;
-import org.example.transactionsservice.transactions.records.TransactionDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -34,9 +33,11 @@ public class TransactionRabbitService {
     }
 
     @RabbitListener(queues = RabbitConfig.TRANSACTIONS_QUEUE)
-    public List<Map<String, Object>> handleTransactionRequest(String accountId) {
+    public List<Map<String, Object>> handleTransactionRequest(String id) {
         try {
-            accountId = accountId.replace("\"", "");
+            id = id.replace("\"", "");
+            UUID accountId = UUID.fromString(id);
+
             List<Transaction> transactions = transactionService.getTransactionsByAccountId(accountId);
 
             List<Map<String, Object>> transactionDTOs = transactions
@@ -57,7 +58,7 @@ public class TransactionRabbitService {
             return transactionDTOs;
         } catch (Exception e) {
             messagesErrorCounter.increment();
-            logger.error("Error processing transaction request for account: {}", accountId, e);
+            logger.error("Error processing transaction request for account: {}", id, e);
 
             throw e;
         }

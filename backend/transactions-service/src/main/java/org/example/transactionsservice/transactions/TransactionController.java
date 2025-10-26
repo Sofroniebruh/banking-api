@@ -1,9 +1,14 @@
 package org.example.transactionsservice.transactions;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.example.transactionsservice.transactions.records.CreateTransactionDTO;
+import org.example.transactionsservice.transactions.records.PaginatedResponse;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -11,7 +16,21 @@ import org.springframework.web.bind.annotation.RestController;
 public class TransactionController {
     private final TransactionService transactionService;
 
-//    @GetMapping("/{id}")
+    @GetMapping("/{id}")
+    public ResponseEntity<PaginatedResponse<Transaction>> getAllTransactionsForAccount(
+            @PathVariable UUID id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        PaginatedResponse<Transaction> paginatedTransactions = transactionService.getPaginatedTransactionsForAccount(pageable, id);
 
+        return ResponseEntity.ok().body(paginatedTransactions);
+    }
 
+    @PostMapping
+    public ResponseEntity<Transaction> createTransaction(@RequestBody CreateTransactionDTO transaction) {
+        Transaction savedTransaction = transactionService.saveTransaction(transaction);
+
+        return ResponseEntity.ok().body(savedTransaction);
+    }
 }

@@ -15,7 +15,7 @@ public class Transaction {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
     @Column(nullable = false)
-    private String accountId;
+    private UUID accountId;
     @Column(nullable = false)
     private BigDecimal amount;
     @Enumerated(EnumType.STRING)

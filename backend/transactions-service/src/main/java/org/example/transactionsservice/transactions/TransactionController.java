@@ -1,5 +1,6 @@
 package org.example.transactionsservice.transactions;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.transactionsservice.transactions.records.CreateTransactionDTO;
 import org.example.transactionsservice.transactions.records.PaginatedResponse;
@@ -28,7 +29,7 @@ public class TransactionController {
     }
 
     @PostMapping
-    public ResponseEntity<Transaction> createTransaction(@RequestBody CreateTransactionDTO transaction) {
+    public ResponseEntity<Transaction> createTransaction(@Valid @RequestBody CreateTransactionDTO transaction) {
         Transaction savedTransaction = transactionService.saveTransaction(transaction);
 
         return ResponseEntity.ok().body(savedTransaction);

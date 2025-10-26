@@ -13,8 +13,8 @@ import java.util.concurrent.TimeUnit;
 public class TokenManager {
     private final RedisService redisService;
     
-    private static final String ACTIVE_TOKEN_PREFIX = "reset_tokens:active:";
-    private static final String USED_TOKEN_PREFIX = "reset_tokens:used:";
+    private static final String ACTIVE_TOKEN_PREFIX = "tokens:active:";
+    private static final String USED_TOKEN_PREFIX = "tokens:used:";
     
     public void storeActiveToken(String email, String token, long timeout, TimeUnit unit) {
         String hashedEmail = hashEmail(email);

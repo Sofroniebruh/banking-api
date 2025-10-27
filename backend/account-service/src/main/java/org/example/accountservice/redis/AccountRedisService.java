@@ -2,6 +2,7 @@ package org.example.accountservice.redis;
 
 import lombok.RequiredArgsConstructor;
 import org.example.accountservice.accounts.Account;
+import org.example.accountservice.accounts.AccountCurrency;
 import org.example.accountservice.accounts.records.AccountReturnDTO;
 import org.example.accountservice.configs.exceptions.TransactionsMessageFailedResponseException;
 import org.springframework.stereotype.Service;
@@ -45,7 +46,7 @@ public class AccountRedisService {
             String createdAt = redisService.getHashValue(key, "createdAt").toString();
             String updatedAt = redisService.getHashValue(key, "updatedAt").toString();
             String balance = getBalance(id);
-            String currency = getCurrency(id);
+            AccountCurrency currency = getCurrency(id);
 
             return AccountReturnDTO.from(UUID.fromString(id), userId.toString(), Double.parseDouble(balance), LocalDateTime.parse(createdAt), LocalDateTime.parse(updatedAt), currency);
         } catch (ClassCastException e) {
@@ -55,10 +56,11 @@ public class AccountRedisService {
         }
     }
     
-    public String getCurrency(String accountId) {
+    public AccountCurrency getCurrency(String accountId) {
         String key = ACCOUNT_KEY_PREFIX + accountId;
 
-        return (String) redisService.getHashValue(key, "currency");
+        String currencyStr = (String) redisService.getHashValue(key, "currency");
+        return AccountCurrency.valueOf(currencyStr);
     }
     
     public String getBalance(String accountId) {
@@ -73,7 +75,7 @@ public class AccountRedisService {
                 "createdAt", account.getCreatedAt(),
                 "updatedAt", account.getUpdatedAt(),
                 "balance", account.getBalance().toString(),
-                "currency", account.getCurrency()
+                "currency", account.getCurrency().toString()
         );
     }
 }

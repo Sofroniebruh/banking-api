@@ -1,9 +1,10 @@
 package org.example.accountservice.accounts.records;
 
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import org.example.accountservice.accounts.AccountCurrency;
 
 public record UpdateAccountDTO(
-        @NotBlank(message = "Currency is required") String currency
+        @NotNull(message = "Currency is required") AccountCurrency currency
 ) {
 
 }

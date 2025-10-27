@@ -28,6 +28,9 @@ public class RabbitConfig {
     public static final String TRANSACTIONS_EXCHANGE = "transactions.exchange";
     public static final String TRANSACTIONS_QUEUE = "transactions.queue";
     public static final String TRANSACTIONS_ROUTING_KEY = "transactions.routing.key";
+    
+    public static final String ACCOUNT_UPDATE_QUEUE = "account.update.queue";
+    public static final String ACCOUNT_UPDATE_ROUTING_KEY = "account.update.routing.key";
     private final Logger logger = LoggerFactory.getLogger(RabbitConfig.class);
     private final Counter transactionsErrorCounter;
 
@@ -76,7 +79,7 @@ public class RabbitConfig {
         template.setMandatory(true);
         template.setMessageConverter(messageConverter);
 
-        template.setReplyTimeout(10000);
+        template.setReplyTimeout(5000);
 
         template.setConfirmCallback(((correlationData, ack, cause) -> {
             if (ack) {
@@ -111,5 +114,18 @@ public class RabbitConfig {
                 .bind(transactionsQueue())
                 .to(transactionsExchange())
                 .with(TRANSACTIONS_ROUTING_KEY);
+    }
+
+    @Bean
+    public Queue accountUpdateQueue() {
+        return new Queue(ACCOUNT_UPDATE_QUEUE, false);
+    }
+
+    @Bean
+    public Binding accountUpdateBinding() {
+        return BindingBuilder
+                .bind(accountUpdateQueue())
+                .to(transactionsExchange())
+                .with(ACCOUNT_UPDATE_ROUTING_KEY);
     }
 }

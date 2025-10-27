@@ -22,5 +22,6 @@ public class Account {
     private LocalDateTime createdAt;
     @UpdateTimestamp
     private LocalDateTime updatedAt;
-    private String currency;
+    @Enumerated(EnumType.STRING)
+    private AccountCurrency currency;
 }

@@ -7,6 +7,7 @@ import org.example.accountservice.accounts.records.*;
 import org.example.accountservice.configs.RabbitConfig;
 import org.example.accountservice.configs.exceptions.*;
 import org.example.accountservice.redis.AccountRedisService;
+import org.example.accountservice.services.AsyncRabbitService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -27,6 +28,7 @@ public class AccountService {
     private final AccountRepository accountRepository;
     private final RabbitTemplate rabbitTemplate;
     private final AccountRedisService accountRedisService;
+    private final AsyncRabbitService asyncRabbitService;
     // My metrics
     private final Counter accountErrorCounter;
     private final Counter accountCreatedCounter;
@@ -36,10 +38,12 @@ public class AccountService {
             AccountRepository accountRepository,
             RabbitTemplate rabbitTemplate,
             MeterRegistry registry,
-            AccountRedisService accountRedisService) {
+            AccountRedisService accountRedisService,
+            AsyncRabbitService asyncRabbitService) {
         this.accountRepository = accountRepository;
         this.rabbitTemplate = rabbitTemplate;
         this.accountRedisService = accountRedisService;
+        this.asyncRabbitService = asyncRabbitService;
         this.accountErrorCounter = io.micrometer.core.instrument.Counter.builder("account-service.account.errors.counter")
                 .description("Error counter for account service")
                 .register(registry);
@@ -113,35 +117,19 @@ public class AccountService {
         }
     }
 
-    @Async("asyncExecutor")
     public CompletableFuture<List<TransactionDTO>> getTransactionsAsync(UUID accountId) {
-        try {
-            Object response = rabbitTemplate.convertSendAndReceive(
-                    RabbitConfig.TRANSACTIONS_EXCHANGE,
-                    RabbitConfig.TRANSACTIONS_ROUTING_KEY,
-                    accountId
-            );
-
-            if (response == null) {
-                throw new TransactionsMessageFailedResponseException("Response was not received, timeout");
-            }
-
-            ObjectMapper objectMapper = new ObjectMapper();
-            List<Map<String, Object>> transactionMaps = objectMapper.convertValue(
-                    response,
-                    new TypeReference<>() {});
-
-            List<TransactionDTO> transactions = transactionMaps
-                    .stream()
-                    .map(this::mapToTransactionDTO)
-                    .toList();
-
-            return CompletableFuture.completedFuture(transactions);
-        } catch (Exception e) {
-            logger.error("Failed to fetch transactions asynchronously: {}", e.getMessage(), e);
-            accountErrorCounter.increment();
-            return CompletableFuture.failedFuture(new TransactionsMessageFailedResponseException("Failed to fetch transactions: " + e.getMessage()));
-        }
+        return asyncRabbitService.getTransactionsAsync(accountId)
+                .thenApply(transactionMaps -> transactionMaps.stream()
+                            .map(this::mapToTransactionDTO)
+                            .toList())
+                .exceptionally(ex -> {
+                    logger.error("Failed to fetch transactions asynchronously for account {}: {}", 
+                        accountId, ex.getMessage(), ex);
+                    accountErrorCounter.increment();
+                    
+                    throw new TransactionsMessageFailedResponseException(
+                        "Failed to fetch transactions: " + ex.getMessage(), ex);
+                });
     }
 
     public CompletableFuture<AccountTransactionsDTO> getAccountByIdAsync(UUID id) {
@@ -195,6 +183,7 @@ public class AccountService {
             return new TransactionDTO(id, status, createdAt);
         } catch (Exception e) {
             logger.error("Failed to map transaction: {}", transaction, e);
+
             throw new IllegalArgumentException("Invalid transaction data: " + e.getMessage(), e);
         }
     }

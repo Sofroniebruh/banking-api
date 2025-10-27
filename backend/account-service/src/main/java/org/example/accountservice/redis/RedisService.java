@@ -49,9 +49,11 @@ public class RedisService {
             return redisTemplate.opsForHash().get(key, field);
         } catch (RedisConnectionFailureException e) {
             log.error("Redis connection failed while getting hash value for key: {}, field: {}", key, field, e);
+
             throw new RedisConnectionException("Failed to connect to Redis while getting hash value");
         } catch (Exception e) {
             log.error("Redis operation failed while getting hash value for key: {}, field: {}", key, field, e);
+
             throw new RedisOperationException("Failed to get hash value from Redis");
         }
     }
@@ -65,6 +67,7 @@ public class RedisService {
             throw new RedisConnectionException("Failed to connect to Redis while setting value");
         } catch (Exception e) {
             log.error("Redis operation failed while setting value for key: {}", key, e);
+
             throw new RedisOperationException("Failed to set value in Redis");
         }
     }
@@ -78,6 +81,7 @@ public class RedisService {
             throw new RedisConnectionException("Failed to connect to Redis while setting value");
         } catch (Exception e) {
             log.error("Redis operation failed while setting value for key: {}", key, e);
+
             throw new RedisOperationException("Failed to set value in Redis");
         }
     }

@@ -41,3 +41,19 @@ spring:
 
 server:
   port: 8083
+
+exchange:
+  eur-to-usd: 1.16
+  usd-to-eur: 0.86
+
+# Async and RabbitMQ settings
+async:
+  core-pool-size: 8
+  max-pool-size: 20
+  queue-capacity: 100
+  
+rabbit:
+  async:
+    timeout: 5000  # 5 seconds
+    core-pool-size: 4
+    max-pool-size: 12

@@ -2,9 +2,8 @@ package org.example.transactionsservice.transactions;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import lombok.extern.slf4j.Slf4j;
 import org.example.transactionsservice.configs.RabbitConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Service;
 
@@ -14,13 +13,13 @@ import java.util.Map;
 import java.util.UUID;
 
 @Service
-public class TransactionRabbitService {
-    private final Logger logger = LoggerFactory.getLogger(TransactionRabbitService.class);
+@Slf4j
+public class TransactionRabbitListener {
     private final TransactionService transactionService;
     private final Counter messagesProcessedCounter;
     private final Counter messagesErrorCounter;
 
-    public TransactionRabbitService(
+    public TransactionRabbitListener(
             TransactionService transactionService,
             MeterRegistry registry) {
         this.transactionService = transactionService;
@@ -53,12 +52,13 @@ public class TransactionRabbitService {
                     .toList();
 
             messagesProcessedCounter.increment();
-            logger.info("Successfully processed transaction request for account: {}", accountId);
+            log.info("Successfully processed transaction request for account: {}", accountId);
+            log.info("Transaction dtos: {}", transactionDTOs);
 
             return transactionDTOs;
         } catch (Exception e) {
             messagesErrorCounter.increment();
-            logger.error("Error processing transaction request for account: {}", id, e);
+            log.error("Error processing transaction request for account: {}", id, e);
 
             throw e;
         }

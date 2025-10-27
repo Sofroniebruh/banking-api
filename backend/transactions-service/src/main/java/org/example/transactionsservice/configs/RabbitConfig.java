@@ -22,9 +22,17 @@ public class RabbitConfig {
     public static final String TRANSACTIONS_EXCHANGE = "transactions.exchange";
     public static final String TRANSACTIONS_ROUTING_KEY = "transactions.routing.key";
 
+    public static final String TRANSACTIONS_UPDATE_QUEUE = "account.update.queue";
+    public static final String TRANSACTIONS_UPDATE_ROUTING_KEY = "account.update.routing.key";
+
     @Bean
     public Queue transactionsQueue() {
         return new Queue(TRANSACTIONS_QUEUE, false);
+    }
+
+    @Bean
+    Queue transactionsUpdateQueue() {
+        return new Queue(TRANSACTIONS_UPDATE_QUEUE, false);
     }
 
     @Bean
@@ -48,6 +56,11 @@ public class RabbitConfig {
     @Bean
     public Binding transactionsBinding() {
         return BindingBuilder.bind(transactionsQueue()).to(transactionsExchange()).with(TRANSACTIONS_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding transactionsAccountBinding() {
+        return BindingBuilder.bind(transactionsUpdateQueue()).to(transactionsExchange()).with(TRANSACTIONS_UPDATE_ROUTING_KEY);
     }
 
     @Bean

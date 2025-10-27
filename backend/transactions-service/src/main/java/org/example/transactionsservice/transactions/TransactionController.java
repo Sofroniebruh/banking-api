@@ -6,10 +6,12 @@ import org.example.transactionsservice.transactions.records.CreateTransactionDTO
 import org.example.transactionsservice.transactions.records.PaginatedResponse;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequiredArgsConstructor
@@ -29,9 +31,9 @@ public class TransactionController {
     }
 
     @PostMapping
-    public ResponseEntity<Transaction> createTransaction(@Valid @RequestBody CreateTransactionDTO transaction) {
-        Transaction savedTransaction = transactionService.saveTransaction(transaction);
-
-        return ResponseEntity.ok().body(savedTransaction);
+    public CompletableFuture<ResponseEntity<Transaction>> createTransaction(@Valid @RequestBody CreateTransactionDTO transaction) {
+        return transactionService.saveTransaction(transaction)
+                .thenApply(ResponseEntity::ok)
+                .exceptionally(ex -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
     }
 }

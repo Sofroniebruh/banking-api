@@ -20,6 +20,8 @@ public class Transaction {
     private BigDecimal amount;
     @Enumerated(EnumType.STRING)
     private TransactionStatus status;
+    @Enumerated(EnumType.STRING)
+    private TransactionCurrency currency;
     private String description;
     @CreationTimestamp
     private LocalDateTime createdAt;

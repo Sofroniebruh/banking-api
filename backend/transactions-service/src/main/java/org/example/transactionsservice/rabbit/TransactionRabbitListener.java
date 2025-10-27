@@ -1,9 +1,11 @@
-package org.example.transactionsservice.transactions;
+package org.example.transactionsservice.rabbit;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.example.transactionsservice.configs.RabbitConfig;
+import org.example.transactionsservice.transactions.Transaction;
+import org.example.transactionsservice.transactions.TransactionService;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Service;
 
@@ -52,8 +54,6 @@ public class TransactionRabbitListener {
                     .toList();
 
             messagesProcessedCounter.increment();
-            log.info("Successfully processed transaction request for account: {}", accountId);
-            log.info("Transaction dtos: {}", transactionDTOs);
 
             return transactionDTOs;
         } catch (Exception e) {

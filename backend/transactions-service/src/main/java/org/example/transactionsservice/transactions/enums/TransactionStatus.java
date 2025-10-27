@@ -1,4 +1,4 @@
-package org.example.transactionsservice.transactions;
+package org.example.transactionsservice.transactions.enums;
 
 public enum TransactionStatus {
     PENDING,

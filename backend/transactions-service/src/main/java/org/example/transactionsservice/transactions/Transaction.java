@@ -2,6 +2,8 @@ package org.example.transactionsservice.transactions;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import org.example.transactionsservice.transactions.enums.TransactionCurrency;
+import org.example.transactionsservice.transactions.enums.TransactionStatus;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;

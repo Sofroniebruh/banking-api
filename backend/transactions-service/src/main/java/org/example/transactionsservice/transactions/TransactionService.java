@@ -8,6 +8,8 @@ import org.example.transactionsservice.configs.RabbitConfig;
 import org.example.transactionsservice.configs.RedisConfig;
 import org.example.transactionsservice.configs.exceptions.BankAccountNotFoundException;
 import org.example.transactionsservice.redis.RedisService;
+import org.example.transactionsservice.transactions.enums.TransactionCurrency;
+import org.example.transactionsservice.transactions.enums.TransactionStatus;
 import org.example.transactionsservice.transactions.records.CreateTransactionDTO;
 import org.example.transactionsservice.transactions.records.PaginatedResponse;
 import org.slf4j.Logger;

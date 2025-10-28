@@ -70,37 +70,39 @@ public class TransactionService {
         );
     }
 
-    @Async("transactionAsyncExecutor")
+    @Async("rabbitTransactionAsyncExecutor")
     protected CompletableFuture<Boolean> communicateAccountBalance(String accountId, BigDecimal amount, String currency) {
-        try {
-            Map<String, Object> data = Map.of(
-                    "accountId", accountId,
-                    "amount", amount,
-                    "currency", currency
-            );
-            Object response = rabbitTemplate.convertSendAndReceive(
-                    RabbitConfig.TRANSACTIONS_EXCHANGE,
-                    RabbitConfig.TRANSACTIONS_UPDATE_ROUTING_KEY,
-                    data
-            );
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                Map<String, Object> data = Map.of(
+                        "accountId", accountId,
+                        "amount", amount,
+                        "currency", currency
+                );
+                Object response = rabbitTemplate.convertSendAndReceive(
+                        RabbitConfig.TRANSACTIONS_EXCHANGE,
+                        RabbitConfig.TRANSACTIONS_UPDATE_ROUTING_KEY,
+                        data
+                );
 
-            if (response == null)
-            {
-                return CompletableFuture.completedFuture(false);
+                if (response == null)
+                {
+                    return false;
+                }
+
+                ObjectMapper mapper = new ObjectMapper();
+                Map<String, Object> responseMap = mapper.convertValue(
+                        response,
+                        new TypeReference<>() {});
+
+                return validateAccountBalanceResponse(responseMap, accountId);
+            } catch (Exception e) {
+                rabbitCommunicationErrorCounter.increment();
+                logger.error("Error communicating with account: {}", accountId, e);
+
+                return false;
             }
-
-            ObjectMapper mapper = new ObjectMapper();
-            Map<String, Object> responseMap = mapper.convertValue(
-                    response,
-                    new TypeReference<>() {});
-
-            return CompletableFuture.completedFuture(validateAccountBalanceResponse(responseMap, accountId));
-        } catch (Exception e) {
-            rabbitCommunicationErrorCounter.increment();
-            logger.error("Error communicating with account: {}", accountId, e);
-
-            return CompletableFuture.completedFuture(false);
-        }
+        });
     }
 
     @Transactional

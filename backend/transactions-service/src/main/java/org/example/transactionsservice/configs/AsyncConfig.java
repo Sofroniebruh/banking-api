@@ -22,4 +22,17 @@ public class AsyncConfig {
 
         return executor;
     }
+
+    @Bean(name = "rabbitTransactionAsyncExecutor")
+    public Executor rabbitAsyncExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(4);
+        executor.setMaxPoolSize(8);
+        executor.setQueueCapacity(50);
+        executor.setThreadNamePrefix("Rabbit-TransactionService-Async-");
+        executor.setRejectedExecutionHandler(new java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy());
+        executor.initialize();
+
+        return executor;
+    }
 }

@@ -21,8 +21,7 @@ public class AccountController {
     @GetMapping("/{id}")
     public CompletableFuture<ResponseEntity<AccountTransactionsDTO>> getAccount(@PathVariable UUID id) {
         return accountService.getAccountByIdAsync(id)
-                .thenApply(ResponseEntity::ok)
-                .exceptionally(ex -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
+                .thenApply(ResponseEntity::ok);
     }
 
     @PostMapping
@@ -44,7 +43,6 @@ public class AccountController {
     @DeleteMapping("/{id}")
     public CompletableFuture<ResponseEntity<Account>> deleteAccountById(@PathVariable("id") UUID id) {
         return accountService.deleteAccountById(id)
-                .thenApply(ResponseEntity::ok)
-                .exceptionally(ex -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
+                .thenApply(ResponseEntity::ok);
     }
 }

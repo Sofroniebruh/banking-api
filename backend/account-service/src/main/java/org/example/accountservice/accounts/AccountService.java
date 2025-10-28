@@ -186,6 +186,7 @@ public class AccountService {
         }
     }
 
+    @Transactional
     public CompletableFuture<Account> deleteAccountById(UUID id) {
         return asyncRabbitService.deleteTransactions(id)
                 .thenCompose(isSuccess -> {
@@ -197,12 +198,6 @@ public class AccountService {
                     }
 
                     return CompletableFuture.supplyAsync(() -> deleteAccountByIdFromDb(id), asyncExecutor);
-                })
-                .exceptionally(ex -> {
-                    logger.error("Failed to delete account: {}", ex.getMessage(), ex);
-                    accountErrorCounter.increment();
-
-                    throw new RuntimeException("Failed to delete account: " + ex.getMessage(), ex);
                 });
     }
 

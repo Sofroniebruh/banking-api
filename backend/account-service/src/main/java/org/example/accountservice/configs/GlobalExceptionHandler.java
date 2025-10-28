@@ -3,6 +3,7 @@ package org.example.accountservice.configs;
 import org.example.accountservice.configs.exceptions.AccountAlreadyCreatedException;
 import org.example.accountservice.configs.exceptions.BankAccountNotFoundException;
 import org.example.accountservice.configs.exceptions.InternalAccountException;
+import org.example.accountservice.configs.exceptions.TransactionsMessageFailedResponseException;
 import org.example.accountservice.configs.records.ErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +29,13 @@ public class GlobalExceptionHandler {
         ErrorResponse response = ErrorResponse.from(e.getMessage(), Instant.now());
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(TransactionsMessageFailedResponseException.class)
+    public ResponseEntity<ErrorResponse> transactionsMessageFailed(TransactionsMessageFailedResponseException e) {
+        ErrorResponse response = ErrorResponse.from(e.getMessage(), Instant.now());
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

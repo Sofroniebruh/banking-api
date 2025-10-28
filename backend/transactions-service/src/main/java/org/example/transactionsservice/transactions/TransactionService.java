@@ -52,7 +52,7 @@ public class TransactionService {
     }
 
     public List<Transaction> getTransactionsByAccountId(UUID accountId) {
-        Optional<List<Transaction>> transactions = transactionRepository.findAllByAccountId(accountId);
+        Optional<List<Transaction>> transactions = transactionRepository.findTop5ByAccountId(accountId);
 
         return transactions.orElseGet(ArrayList::new);
     }

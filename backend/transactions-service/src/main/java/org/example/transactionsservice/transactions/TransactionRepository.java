@@ -11,7 +11,7 @@ import java.util.UUID;
 
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
-    Optional<List<Transaction>> findAllByAccountId(UUID accountId);
+    Optional<List<Transaction>> findTop5ByAccountId(UUID accountId);
     Page<Transaction> findAllByAccountId(UUID accountId, Pageable pageable);
     void deleteAllByAccountId(UUID accountId);
 }

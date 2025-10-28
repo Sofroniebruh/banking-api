@@ -5,7 +5,6 @@ import lombok.RequiredArgsConstructor;
 import org.example.accountservice.accounts.records.AccountDTO;
 import org.example.accountservice.accounts.records.AccountTransactionsDTO;
 import org.example.accountservice.accounts.records.UpdateAccountDTO;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

@@ -13,7 +13,7 @@ services:
       - auth-service
     networks:
       - public
-      - private 
+      - private
       
   auth-service:
     image: openjdk:21-jdk
@@ -30,6 +30,79 @@ services:
     networks:
       - public
       - private
+      
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq-bank-api
+    expose:
+      - 15672
+      - 5672
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    networks:
+      - private
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+      
+  python-bridge:
+    build: ./python-bridge/.venv
+    container_name: python-bridge-bank
+    env_file:
+      - ./python-bridge/.venv/.env
+    depends_on:
+      - rabbitmq
+    restart: on-failure
+    networks:
+      - private
+  
+  user-service:
+    image: openjdk:21-jdk
+    working_dir: /app
+    volumes:
+      - ./user-service:/app
+    expose:
+      - "8082"
+    command: ./mvnw spring-boot:run
+    depends_on:
+      - db
+    env_file:
+      - ./user-service/.env
+    networks:
+      - public
+      - private
+  
+  account-service:
+    image: openjdk:21-jdk
+    working_dir: /app
+    volumes:
+      - ./account-service:/app
+    ports:
+      - "8083:8083"
+    command: ./mvnw spring-boot:run
+    depends_on:
+      - db
+    env_file:
+      - ./account-service/.env
+    networks:
+      - public
+      - private
+  
+  transactions-service:
+    image: openjdk:21-jdk
+    working_dir: /app
+    volumes:
+      - ./transactions-service:/app
+    ports:
+      - "8084:8084"
+    command: ./mvnw spring-boot:run
+    depends_on:
+      - db
+    env_file:
+      - ./transactions-service/.env
+    networks:
+      - public
+      - private
 
   db:
     image: postgres:15
@@ -41,6 +114,24 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - private
+  
+  redis:
+    image: redis:7.4
+    container_name: redis
+    restart: always
+    command: [
+      "redis-server",
+      "--requirepass", "${REDIS_PASSWORD}",
+      "--appendonly", "yes"
+    ]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
     networks:
       - private
 
@@ -62,6 +153,8 @@ services:
 
 volumes:
   postgres_data:
+  rabbitmq-data:
+  redis_data:
   
 networks:
   public:

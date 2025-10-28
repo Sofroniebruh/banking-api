@@ -1,0 +1,8 @@
+.env 
+.DS_Store
+
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/

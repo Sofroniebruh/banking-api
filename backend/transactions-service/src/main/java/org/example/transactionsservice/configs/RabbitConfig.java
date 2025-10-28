@@ -25,6 +25,8 @@ public class RabbitConfig {
     public static final String TRANSACTIONS_UPDATE_QUEUE = "account.update.queue";
     public static final String TRANSACTIONS_UPDATE_ROUTING_KEY = "account.update.routing.key";
 
+    public static final String TRANSACTIONS_DELETE_ROUTING_KEY = "account.delete.routing.key";
+
     @Bean
     public Queue transactionsQueue() {
         return new Queue(TRANSACTIONS_QUEUE, false);
@@ -55,12 +57,20 @@ public class RabbitConfig {
 
     @Bean
     public Binding transactionsBinding() {
-        return BindingBuilder.bind(transactionsQueue()).to(transactionsExchange()).with(TRANSACTIONS_ROUTING_KEY);
+        return BindingBuilder
+                .bind(transactionsQueue()).to(transactionsExchange()).with(TRANSACTIONS_ROUTING_KEY);
     }
 
     @Bean
     public Binding transactionsAccountBinding() {
-        return BindingBuilder.bind(transactionsUpdateQueue()).to(transactionsExchange()).with(TRANSACTIONS_UPDATE_ROUTING_KEY);
+        return BindingBuilder
+                .bind(transactionsUpdateQueue()).to(transactionsExchange()).with(TRANSACTIONS_UPDATE_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding transactionsDeleteBinding() {
+        return BindingBuilder
+                .bind(transactionsQueue()).to(transactionsExchange()).with(TRANSACTIONS_DELETE_ROUTING_KEY);
     }
 
     @Bean

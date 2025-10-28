@@ -25,6 +25,12 @@ public class AccountRedisService {
         redisService.setHash(key, accountData);
     }
 
+    public void deleteAccount(UUID id) {
+       String key = ACCOUNT_KEY_PREFIX + id;
+
+       redisService.delValue(key);
+    }
+
     public void updateAccountFromRedis(Account account) {
         String key = ACCOUNT_KEY_PREFIX + account.getId();
 

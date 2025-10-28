@@ -76,6 +76,51 @@ public class AsyncRabbitService {
             }
         });
     }
+
+    @Async("rabbitAsyncExecutor")
+    public CompletableFuture<Boolean> deleteTransactions(UUID id) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                Object response = rabbitTemplate.convertSendAndReceive(
+                        RabbitConfig.TRANSACTIONS_EXCHANGE,
+                        RabbitConfig.ACCOUNT_DELETE_ROUTING_KEY,
+                        id
+                );
+
+                if (response == null) {
+                    timeoutCounter.increment();
+                    log.warn("Received null response from transactions service");
+
+                    throw new RuntimeException("No response received from transactions service");
+                }
+
+                Map<String, Object> convertedResponse = objectMapper.convertValue(
+                        response, new TypeReference<>() {}
+                );
+
+                if (!convertedResponse.containsKey("success")) {
+                    errorCounter.increment();
+
+                    throw new RuntimeException("RabbitMQ returned null response from transactions service");
+                }
+
+                return (Boolean) convertedResponse.get("success");
+            } catch (Exception e) {
+                errorCounter.increment();
+
+                if (e.getMessage() != null && e.getMessage().contains("timeout")) {
+                    timeoutCounter.increment();
+                    log.warn("RabbitMQ call timed out while deleting transactions");
+
+                    throw new RuntimeException("Timeout waiting for transactions service response", e);
+                } else {
+                    log.error("RabbitMQ call failed while deleting transactions");
+
+                    throw new RuntimeException("Failed to send RabbitMQ message: " + e.getMessage(), e);
+                }
+            }
+        });
+    }
     
     public CompletableFuture<List<Map<String, Object>>> getTransactionsAsync(UUID accountId) {
         return sendAndReceiveAsync(

@@ -31,6 +31,7 @@ public class RabbitConfig {
     
     public static final String ACCOUNT_UPDATE_QUEUE = "account.update.queue";
     public static final String ACCOUNT_UPDATE_ROUTING_KEY = "account.update.routing.key";
+    public static final String ACCOUNT_DELETE_ROUTING_KEY = "account.delete.routing.key";
     private final Logger logger = LoggerFactory.getLogger(RabbitConfig.class);
     private final Counter transactionsErrorCounter;
 
@@ -114,6 +115,14 @@ public class RabbitConfig {
                 .bind(transactionsQueue())
                 .to(transactionsExchange())
                 .with(TRANSACTIONS_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding transactionsDeleteBinding() {
+        return BindingBuilder
+                .bind(transactionsQueue())
+                .to(transactionsExchange())
+                .with(ACCOUNT_DELETE_ROUTING_KEY);
     }
 
     @Bean

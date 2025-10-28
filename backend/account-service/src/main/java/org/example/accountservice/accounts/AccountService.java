@@ -1,17 +1,13 @@
 package org.example.accountservice.accounts;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.example.accountservice.accounts.records.*;
-import org.example.accountservice.configs.RabbitConfig;
 import org.example.accountservice.configs.exceptions.*;
 import org.example.accountservice.redis.AccountRedisService;
+import org.example.accountservice.redis.RedisService;
 import org.example.accountservice.services.AsyncRabbitService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import io.micrometer.core.instrument.Counter;
@@ -21,27 +17,27 @@ import java.util.concurrent.CompletableFuture;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.concurrent.Executor;
 
 @Service
 public class AccountService {
     private final Logger logger = LoggerFactory.getLogger(AccountService.class);
     private final AccountRepository accountRepository;
-    private final RabbitTemplate rabbitTemplate;
     private final AccountRedisService accountRedisService;
     private final AsyncRabbitService asyncRabbitService;
     // My metrics
     private final Counter accountErrorCounter;
     private final Counter accountCreatedCounter;
     private final Counter accountDeletedCounter;
+    private final RedisService redisService;
+    private final Executor asyncExecutor;
 
     public AccountService(
             AccountRepository accountRepository,
-            RabbitTemplate rabbitTemplate,
             MeterRegistry registry,
             AccountRedisService accountRedisService,
-            AsyncRabbitService asyncRabbitService) {
+            AsyncRabbitService asyncRabbitService, RedisService redisService, Executor asyncExecutor) {
         this.accountRepository = accountRepository;
-        this.rabbitTemplate = rabbitTemplate;
         this.accountRedisService = accountRedisService;
         this.asyncRabbitService = asyncRabbitService;
         this.accountErrorCounter = io.micrometer.core.instrument.Counter.builder("account-service.account.errors.counter")
@@ -53,6 +49,8 @@ public class AccountService {
         this.accountDeletedCounter = io.micrometer.core.instrument.Counter.builder("account-service.account.deleted.counter")
                 .description("Counter for deleted accounts in account service")
                 .register(registry);
+        this.redisService = redisService;
+        this.asyncExecutor = asyncExecutor;
     }
 
     @Transactional
@@ -188,7 +186,35 @@ public class AccountService {
         }
     }
 
-//    public Account deleteAccountById(UUID id) {
-//
-//    }
+    public CompletableFuture<Account> deleteAccountById(UUID id) {
+        return asyncRabbitService.deleteTransactions(id)
+                .thenCompose(isSuccess -> {
+                    if (!isSuccess) {
+                        accountErrorCounter.increment();
+                        return CompletableFuture.failedFuture(
+                                new TransactionRemovalFailedException("Failed to delete transactions")
+                        );
+                    }
+
+                    return CompletableFuture.supplyAsync(() -> deleteAccountByIdFromDb(id), asyncExecutor);
+                })
+                .exceptionally(ex -> {
+                    logger.error("Failed to delete account: {}", ex.getMessage(), ex);
+                    accountErrorCounter.increment();
+
+                    throw new RuntimeException("Failed to delete account: " + ex.getMessage(), ex);
+                });
+    }
+
+    @Transactional
+    protected Account deleteAccountByIdFromDb(UUID id) {
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new BankAccountNotFoundException(String.format("Account with id %s not found", id)));
+
+        accountRepository.delete(account);
+        accountRedisService.deleteAccount(account.getId());
+        accountDeletedCounter.increment();
+
+        return account;
+    }
 }

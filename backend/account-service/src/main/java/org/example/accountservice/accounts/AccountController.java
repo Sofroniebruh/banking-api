@@ -41,10 +41,10 @@ public class AccountController {
         return ResponseEntity.ok(newAccount);
     }
 
-//    @DeleteMapping("/{id}")
-//    public ResponseEntity<Account> deleteAccountById(@PathVariable("id") UUID id) {
-//        Account deletedAccount = accountService.deleteAccountById(id);
-//
-//        return ResponseEntity.ok(deletedAccount);
-//    }
+    @DeleteMapping("/{id}")
+    public CompletableFuture<ResponseEntity<Account>> deleteAccountById(@PathVariable("id") UUID id) {
+        return accountService.deleteAccountById(id)
+                .thenApply(ResponseEntity::ok)
+                .exceptionally(ex -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
+    }
 }

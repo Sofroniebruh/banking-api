@@ -46,14 +46,23 @@ exchange:
   eur-to-usd: 1.16
   usd-to-eur: 0.86
 
-# Async and RabbitMQ settings
-async:
-  core-pool-size: 8
-  max-pool-size: 20
-  queue-capacity: 100
-  
-rabbit:
-  async:
-    timeout: 5000  # 5 seconds
-    core-pool-size: 4
-    max-pool-size: 12
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: never
+      show-components: never
+      group:
+        public:
+          include: ping
+          show-details: never
+        detailed:
+          include: "*"
+          show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      environment: ${ENVIRONMENT:dev}

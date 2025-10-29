@@ -1,5 +1,6 @@
 package org.example.accountservice.accounts;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.accountservice.accounts.records.AccountDTO;
@@ -24,8 +25,11 @@ public class AccountController {
     }
 
     @PostMapping
-    public ResponseEntity<Account> createAccount(@Valid @RequestBody AccountDTO accountDTO) {
-        Account account = accountService.createAccount(accountDTO);
+    public ResponseEntity<Account> createAccount(
+            @Valid @RequestBody AccountDTO accountDTO,
+            HttpServletRequest request) {
+        String userId = request.getHeader("X-User-ID");
+        Account account = accountService.createAccount(accountDTO, userId);
 
         return ResponseEntity.ok(account);
     }

@@ -54,18 +54,18 @@ public class AccountService {
     }
 
     @Transactional
-    public Account createAccount(AccountDTO accountDTO) {
+    public Account createAccount(AccountDTO accountDTO, String userId) {
         try {
-            Optional<Account> optionalAccount = accountRepository.findAccountByUserId(accountDTO.userId());
+            Optional<Account> optionalAccount = accountRepository.findAccountByUserId(userId);
 
             if (optionalAccount.isPresent()) {
-                throw new AccountAlreadyCreatedException(String.format("Account with user id %s is already created", accountDTO.userId()));
+                throw new AccountAlreadyCreatedException(String.format("Account with user id %s is already created", userId));
             }
 
             Account account = new Account();
 
             account.setBalance(BigDecimal.ZERO);
-            account.setUserId(accountDTO.userId());
+            account.setUserId(userId);
             account.setCurrency(accountDTO.currency());
             account.setCreatedAt(LocalDateTime.now());
             account.setUpdatedAt(LocalDateTime.now());

@@ -46,10 +46,10 @@ services:
       - rabbitmq-data:/var/lib/rabbitmq
       
   python-bridge:
-    build: ./python-bridge/.venv
+    build: ./python-bridge
     container_name: python-bridge-bank
     env_file:
-      - ./python-bridge/.venv/.env
+      - ./python-bridge/.env
     depends_on:
       - rabbitmq
     restart: on-failure
@@ -77,8 +77,8 @@ services:
     working_dir: /app
     volumes:
       - ./account-service:/app
-    ports:
-      - "8083:8083"
+    expose:
+      - "8083"
     command: ./mvnw spring-boot:run
     depends_on:
       - db
@@ -93,8 +93,8 @@ services:
     working_dir: /app
     volumes:
       - ./transactions-service:/app
-    ports:
-      - "8084:8084"
+    expose:
+      - "8084"
     command: ./mvnw spring-boot:run
     depends_on:
       - db

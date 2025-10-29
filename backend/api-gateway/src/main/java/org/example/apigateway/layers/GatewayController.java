@@ -78,6 +78,20 @@ public class GatewayController {
         return gatewayService.proxyToService(request, body, "http://user-service:8082");
     }
 
+    @RequestMapping("/api/v1/accounts/**")
+    public ResponseEntity<String> proxyToAccountService(
+            HttpServletRequest request,
+            @RequestBody(required = false) Object body) {
+        return gatewayService.proxyToService(request, body, "http://account-service:8083");
+    }
+
+    @RequestMapping("/api/v1/transactions/**")
+    public ResponseEntity<String> proxyToTransactionsService(
+            HttpServletRequest request,
+            @RequestBody(required = false) Object body) {
+        return gatewayService.proxyToService(request, body, "http://transactions-service:8084");
+    }
+
     @RequestMapping("/actuator/auth-service/**")
     public ResponseEntity<String> proxyToAuthServiceActuator(
             HttpServletRequest request,
@@ -92,20 +106,17 @@ public class GatewayController {
         return gatewayService.proxyToServiceWithPathRewrite(request, body, "http://user-service:8082", "/actuator/user-service");
     }
 
-//    @RequestMapping("/api/v1/accounts/**")
-//    public ResponseEntity<Object> proxyToAccountService(
-//            HttpServletRequest request,
-//            @RequestBody(required = false) String body) throws JsonProcessingException {
-//        ResponseEntity<Object> response =  proxyToService(request, body, "http://account-service:8083");
-//
-//        Object responseBody = response.getBody();
-//
-//        if (responseBody != null) {
-//            String responseJson = objectMapper.writeValueAsString(responseBody);
-//            Map<String, Object> responseMap = objectMapper.readValue(responseJson, Map.class);
-//
-//
-//        }
-//
-//    }
+    @RequestMapping("/actuator/account-service/**")
+    public ResponseEntity<String> proxyToAccountServiceActuator(
+            HttpServletRequest request,
+            @RequestBody(required = false) String body) {
+        return gatewayService.proxyToServiceWithPathRewrite(request, body, "http://account-service:8083", "/actuator/account-service");
+    }
+
+    @RequestMapping("/actuator/transactions-service/**")
+    public ResponseEntity<String> proxyToTransactionsServiceActuator(
+            HttpServletRequest request,
+            @RequestBody(required = false) String body) {
+        return gatewayService.proxyToServiceWithPathRewrite(request, body, "http://transactions-service:8084", "/actuator/transactions-service");
+    }
 }
